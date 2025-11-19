@@ -11,8 +11,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.speech.RecognizerIntent
-import android.text.Editable
-import android.text.TextWatcher
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -69,10 +67,16 @@ class HomePageFragment : Fragment() {
         if (result.resultCode == Activity.RESULT_OK) {
             val results = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
             results?.get(0)?.let { spokenText ->
-                searchBar.setText(spokenText)
+                // 1. Navigate to Search Page
+                (requireActivity() as? MainActivity)?.showSearchPage()
+
+                // 2. Wait for transition, then broadcast the query so SearchFragment picks it up
                 handler.postDelayed({
-                    performSearch(spokenText)
-                }, 50)
+                    val intent = Intent("SEARCH_QUERY_CHANGED").apply {
+                        putExtra("query", spokenText)
+                    }
+                    requireContext().sendBroadcast(intent)
+                }, 300)
             }
         }
     }
@@ -151,7 +155,19 @@ class HomePageFragment : Fragment() {
         })
 
         setupCategoryTabs()
-        setupSearchFunctionality()
+
+        // Search Bar just opens the Search Fragment
+        searchBar.setOnClickListener {
+            (requireActivity() as? MainActivity)?.showSearchPage()
+        }
+
+        // Also handle focus incase
+        searchBar.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                searchBar.clearFocus()
+                (requireActivity() as? MainActivity)?.showSearchPage()
+            }
+        }
 
         // Load data only once or when needed
         if (!isDataLoaded) {
@@ -229,8 +245,22 @@ class HomePageFragment : Fragment() {
         view.findViewById<ImageButton>(R.id.settings_icon).setOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
         }
+        // Mic listener
         view.findViewById<ImageButton>(R.id.voice_search_btn).setOnClickListener {
             startVoiceRecognition()
+        }
+    }
+
+    private fun startVoiceRecognition() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search")
+        }
+        try {
+            voiceRecognitionLauncher.launch(intent)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Voice recognition not supported", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -435,36 +465,6 @@ class HomePageFragment : Fragment() {
             putExtra("sort_type", sortType.ordinal)
         }
         requireContext().sendBroadcast(intent)
-    }
-
-    private fun setupSearchFunctionality() {
-        searchBar.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                performSearch(s.toString())
-            }
-        })
-    }
-
-    private fun performSearch(query: String) {
-        val intent = Intent("SEARCH_QUERY_CHANGED").apply {
-            putExtra("query", query)
-        }
-        requireContext().sendBroadcast(intent)
-    }
-
-    private fun startVoiceRecognition() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search")
-        }
-        try {
-            voiceRecognitionLauncher.launch(intent)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Voice recognition not supported", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun shuffleAllSongs() {

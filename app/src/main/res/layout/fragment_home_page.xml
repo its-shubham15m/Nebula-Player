@@ -56,8 +56,11 @@
                 android:background="@android:color/transparent"
                 android:singleLine="true"
                 android:imeOptions="actionSearch"
-                android:inputType="textCapWords"
-                android:paddingVertical="4dp"/>
+                android:inputType="none"
+                android:paddingVertical="4dp"
+                android:focusable="false"
+                android:clickable="true" />
+
             <View
                 android:layout_width="2dp"
                 android:layout_height="20dp"

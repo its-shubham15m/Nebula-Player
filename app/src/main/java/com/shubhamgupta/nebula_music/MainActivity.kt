@@ -48,6 +48,7 @@ import com.shubhamgupta.nebula_music.fragments.MiniPlayerFragment
 import com.shubhamgupta.nebula_music.fragments.NowPlayingFragment
 import com.shubhamgupta.nebula_music.fragments.PlaylistsFragment
 import com.shubhamgupta.nebula_music.fragments.RecentFragment
+import com.shubhamgupta.nebula_music.fragments.SearchFragment
 import com.shubhamgupta.nebula_music.fragments.SettingsFragment
 import com.shubhamgupta.nebula_music.service.MusicService
 import com.shubhamgupta.nebula_music.utils.PreferenceManager
@@ -594,6 +595,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // NEW: Method to show the Search Page
+    fun showSearchPage() {
+        if (currentFragment == "search" || isTransitioning) return
+        isTransitioning = true
+        currentFragment = "search"
+
+        supportFragmentManager.commit {
+            setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
+            replace(R.id.fragment_container, SearchFragment(), "search_page")
+            setReorderingAllowed(true)
+            addToBackStack("search_page")
+        }
+
+        handler.postDelayed({
+            updateMiniPlayerVisibility()
+            isTransitioning = false
+        }, 300)
+    }
+
     // New: Implementation for showing Settings Page
     fun showSettingsPage() {
         if (currentFragment == "settings" || isTransitioning) return
@@ -739,11 +759,11 @@ class MainActivity : AppCompatActivity() {
     fun getMusicService(): MusicService? = musicService
 
     fun updateMiniPlayerVisibility() {
-        // Updated: Included settings in visibility check
+        // Updated: Included settings and search in visibility check
         val shouldBeVisible = currentFragment == "home" || currentFragment == "favorites" ||
                 currentFragment == "playlists" || currentFragment == "recent" ||
                 currentFragment == "equalizer" || currentFragment == "about" ||
-                currentFragment == "settings"
+                currentFragment == "settings" || currentFragment == "search"
 
         Log.d("MainActivity", "updateMiniPlayerVisibility: currentFragment=$currentFragment, shouldBeVisible=$shouldBeVisible")
 
@@ -828,6 +848,7 @@ class MainActivity : AppCompatActivity() {
             supportFragmentManager.findFragmentByTag("equalizer_page") != null -> currentFragment = "equalizer"
             supportFragmentManager.findFragmentByTag("about_page") != null -> currentFragment = "about"
             supportFragmentManager.findFragmentByTag("settings_page") != null -> currentFragment = "settings"
+            supportFragmentManager.findFragmentByTag("search_page") != null -> currentFragment = "search"
             supportFragmentManager.findFragmentByTag("NOW_PLAYING_FRAGMENT") != null -> currentFragment = "now_playing"
             else -> {
                 currentFragment = "home"
