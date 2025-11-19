@@ -161,8 +161,8 @@ class VideoPlayerActivity : AppCompatActivity() {
             mediaPlayer = mp
             mp.start()
 
-            // Fix Subtitles: Ensure visible and background is clear
-            subtitleView.visibility = View.VISIBLE
+            // Fix Subtitles: Default to GONE so no empty box is shown
+            subtitleView.visibility = View.GONE
 
             // Listener for embedded subtitles (TimedText)
             mp.setOnTimedTextListener { _, text ->
@@ -171,7 +171,8 @@ class VideoPlayerActivity : AppCompatActivity() {
                         subtitleView.text = text.text.replace("\n", " ")
                         subtitleView.visibility = View.VISIBLE
                     } else {
-                        subtitleView.visibility = View.INVISIBLE // invisible instead of gone to prevent layout jumps
+                        // Use GONE instead of INVISIBLE to hide the background
+                        subtitleView.visibility = View.GONE
                     }
                 }
             }
@@ -264,7 +265,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun playVideo(video: Video) {
         titleView.text = video.title
         subtitleView.text = ""
-        subtitleView.visibility = View.INVISIBLE
+        subtitleView.visibility = View.GONE
         currentVideoUri = video.uri
         videoView.setVideoURI(video.uri)
     }

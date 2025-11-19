@@ -20,6 +20,7 @@ object VideoRepository {
                 MediaStore.Video.Media.RESOLUTION
             )
 
+            // Crucial for "New videos not appearing": Default sort by newest
             val sortOrder = "${MediaStore.Video.Media.DATE_ADDED} DESC"
 
             context.contentResolver.query(
@@ -51,7 +52,6 @@ object VideoRepository {
                         id
                     )
 
-                    // Filter out very short videos (optional, < 1 sec)
                     if (duration > 0) {
                         videoList.add(
                             Video(id, title, duration, size, path, contentUri, dateAdded, resolution)

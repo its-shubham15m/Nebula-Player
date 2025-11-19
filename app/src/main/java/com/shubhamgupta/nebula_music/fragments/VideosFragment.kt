@@ -19,11 +19,13 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.shubhamgupta.nebula_music.MainActivity
 import com.shubhamgupta.nebula_music.R
 import com.shubhamgupta.nebula_music.VideoPlayerActivity
 import com.shubhamgupta.nebula_music.adapters.VideoAdapter
 import com.shubhamgupta.nebula_music.models.Video
 import com.shubhamgupta.nebula_music.repository.VideoRepository
+import com.shubhamgupta.nebula_music.utils.PreferenceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,15 +40,13 @@ class VideosFragment : Fragment() {
     private val videoList = mutableListOf<Video>()
     private var filteredVideoList = mutableListOf<Video>()
     private var currentQuery = ""
+    private var currentSortType = MainActivity.SortType.DATE_ADDED_DESC // Default to newest
 
     private val handler = Handler(Looper.getMainLooper())
     private var loadJob: Job? = null
-
-    // Scroll state
     private var scrollPosition = 0
     private var scrollOffset = 0
 
-    // Content Observer for Auto-Refresh
     private lateinit var videoContentObserver: VideoContentObserver
 
     private val searchReceiver = object : BroadcastReceiver() {
@@ -58,12 +58,28 @@ class VideosFragment : Fragment() {
         }
     }
 
-    // Observer Class to detect MediaStore changes
+    // Updated to listen for SORT_VIDEOS specifically
+    private val sortReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "SORT_VIDEOS") {
+                val sortTypeOrdinal = intent.getIntExtra("sort_type", 0)
+                val newSortType = MainActivity.SortType.entries.toTypedArray()[sortTypeOrdinal]
+                if (newSortType != currentSortType) {
+                    currentSortType = newSortType
+                    PreferenceManager.saveSortPreference(requireContext(), "videos", currentSortType)
+                    loadVideos()
+                }
+            }
+        }
+    }
+
+    // Fix for "New Videos not appearing": Auto-detects changes in MediaStore
     inner class VideoContentObserver(handler: Handler) : ContentObserver(handler) {
         override fun onChange(selfChange: Boolean) {
             super.onChange(selfChange)
             Log.d("VideosFragment", "External Video Content Changed - Refreshing List")
-            refreshDataPreserveState()
+            // Delay slightly to allow file write to complete
+            handler.postDelayed({ refreshDataPreserveState() }, 1000)
         }
     }
 
@@ -104,6 +120,11 @@ class VideosFragment : Fragment() {
         if (isAdded) loadVideos(preserveState = true)
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        currentSortType = PreferenceManager.getSortPreferenceWithDefault(requireContext(), "videos")
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
@@ -113,11 +134,7 @@ class VideosFragment : Fragment() {
         loadingProgress = view.findViewById(R.id.loading_progress)
 
         emptyView.text = "No videos found"
-
-        // Use GridLayoutManager with span count 2
         recyclerView.layoutManager = GridLayoutManager(context, 2)
-
-        // Initialize Observer
         videoContentObserver = VideoContentObserver(handler)
 
         return view
@@ -130,14 +147,18 @@ class VideosFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        val filter = IntentFilter("SEARCH_QUERY_CHANGED")
+        val searchFilter = IntentFilter("SEARCH_QUERY_CHANGED")
+        val sortFilter = IntentFilter("SORT_VIDEOS") // Correct filter
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireActivity().registerReceiver(searchReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            requireActivity().registerReceiver(searchReceiver, searchFilter, Context.RECEIVER_NOT_EXPORTED)
+            requireActivity().registerReceiver(sortReceiver, sortFilter, Context.RECEIVER_NOT_EXPORTED)
         } else {
-            requireActivity().registerReceiver(searchReceiver, filter)
+            requireActivity().registerReceiver(searchReceiver, searchFilter)
+            requireActivity().registerReceiver(sortReceiver, sortFilter)
         }
 
-        // Register Content Observer
+        // Register Observer for new videos
         try {
             requireContext().contentResolver.registerContentObserver(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
@@ -147,19 +168,17 @@ class VideosFragment : Fragment() {
         } catch (e: Exception) {
             Log.e("VideosFragment", "Error registering content observer", e)
         }
+
+        // FIX: Always load videos on resume to catch new files added while app was backgrounded
+        // This ensures new videos appear even if the list wasn't empty before
+        loadVideos(preserveState = true)
     }
 
     override fun onPause() {
         super.onPause()
         requireActivity().unregisterReceiver(searchReceiver)
-
-        // Unregister Content Observer
-        try {
-            requireContext().contentResolver.unregisterContentObserver(videoContentObserver)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
+        requireActivity().unregisterReceiver(sortReceiver)
+        try { requireContext().contentResolver.unregisterContentObserver(videoContentObserver) } catch (e: Exception) {}
         loadJob?.cancel()
         saveScrollState()
     }
@@ -177,7 +196,7 @@ class VideosFragment : Fragment() {
                 val videos = VideoRepository.getAllVideos(requireContext())
                 videoList.clear()
                 videoList.addAll(videos)
-                filterVideos()
+                applyCurrentSort()
 
                 if (!preserveState) {
                     loadingProgress.visibility = View.GONE
@@ -190,6 +209,17 @@ class VideosFragment : Fragment() {
                 loadingProgress.visibility = View.GONE
             }
         }
+    }
+
+    private fun applyCurrentSort() {
+        when (currentSortType) {
+            MainActivity.SortType.NAME_ASC -> videoList.sortBy { it.title.lowercase() }
+            MainActivity.SortType.NAME_DESC -> videoList.sortByDescending { it.title.lowercase() }
+            MainActivity.SortType.DATE_ADDED_ASC -> videoList.sortBy { it.dateAdded }
+            MainActivity.SortType.DATE_ADDED_DESC -> videoList.sortByDescending { it.dateAdded }
+            MainActivity.SortType.DURATION -> videoList.sortByDescending { it.duration }
+        }
+        filterVideos()
     }
 
     private fun filterVideos() {

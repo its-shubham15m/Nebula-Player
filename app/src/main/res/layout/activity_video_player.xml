@@ -33,7 +33,7 @@
         android:textStyle="bold"
         android:background="#40000000"
         android:elevation="10dp"
-        android:visibility="invisible"
+        android:visibility="gone"
         tools:text="This is a subtitle text example"
         tools:visibility="visible"/>
 

@@ -67,10 +67,7 @@ class HomePageFragment : Fragment() {
         if (result.resultCode == Activity.RESULT_OK) {
             val results = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
             results?.get(0)?.let { spokenText ->
-                // 1. Navigate to Search Page
                 (requireActivity() as? MainActivity)?.showSearchPage()
-
-                // 2. Wait for transition, then broadcast the query so SearchFragment picks it up
                 handler.postDelayed({
                     val intent = Intent("SEARCH_QUERY_CHANGED").apply {
                         putExtra("query", spokenText)
@@ -86,17 +83,14 @@ class HomePageFragment : Fragment() {
             when (intent?.action) {
                 "FORCE_REFRESH_ALL", "FORCE_REFRESH_CURRENT", "QUEUE_CHANGED" -> {
                     Log.d("HomePageFragment", "Refresh broadcast received: ${intent.action}")
-                    handler.post {
-                        refreshData()
-                    }
+                    handler.post { refreshData() }
                 }
             }
         }
     }
 
-    // Adapter for the ViewPager2 - UPDATED FOR 5 TABS
     private inner class CategoryPagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
-        override fun getItemCount(): Int = 5 // Songs, Artists, Albums, Genres, Videos
+        override fun getItemCount(): Int = 5
 
         override fun createFragment(position: Int): Fragment {
             return when (position) {
@@ -104,18 +98,15 @@ class HomePageFragment : Fragment() {
                 1 -> childFragmentCache.getOrPut("artists") { ArtistsFragment() }
                 2 -> childFragmentCache.getOrPut("albums") { AlbumsFragment() }
                 3 -> childFragmentCache.getOrPut("genres") { GenresFragment() }
-                4 -> childFragmentCache.getOrPut("videos") { VideosFragment() } // New Fragment
+                4 -> childFragmentCache.getOrPut("videos") { VideosFragment() }
                 else -> throw IllegalStateException("Invalid pager position $position")
             }
         }
     }
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handler = Handler(Looper.getMainLooper())
-
-        // Restore saved state if available
         savedInstanceState?.let {
             currentCategory = it.getString("currentCategory", "songs")
         }
@@ -132,9 +123,10 @@ class HomePageFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         initializeViews(view)
 
-        // Setup ViewPager
         viewPager = view.findViewById(R.id.home_view_pager)
         viewPager.adapter = CategoryPagerAdapter(this)
+        viewPager.offscreenPageLimit = 1
+
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
@@ -149,24 +141,17 @@ class HomePageFragment : Fragment() {
                 currentCategory = newCategory
                 updateTabUI(position)
 
-                // Only apply sort preference for audio categories
-                if (position < 4) {
-                    handler.post {
-                        val currentSortType = PreferenceManager.getSortPreferenceWithDefault(requireContext(), newCategory)
-                        applySortToCurrentFragment(currentSortType)
-                    }
+                // FIX: Removed the "if (position < 4)" restriction so Videos (index 4) also get sorted
+                handler.post {
+                    val currentSortType = PreferenceManager.getSortPreferenceWithDefault(requireContext(), newCategory)
+                    applySortToCurrentFragment(currentSortType)
                 }
             }
         })
 
         setupCategoryTabs()
 
-        // Search Bar just opens the Search Fragment
-        searchBar.setOnClickListener {
-            (requireActivity() as? MainActivity)?.showSearchPage()
-        }
-
-        // Also handle focus incase
+        searchBar.setOnClickListener { (requireActivity() as? MainActivity)?.showSearchPage() }
         searchBar.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 searchBar.clearFocus()
@@ -174,14 +159,12 @@ class HomePageFragment : Fragment() {
             }
         }
 
-        // Load data only once or when needed
         if (!isDataLoaded) {
             loadCardAlbumArt()
             loadQuickActionCardData()
             isDataLoaded = true
         }
 
-        // Set initial tab based on saved state or default
         val initialPosition = when (currentCategory) {
             "artists" -> 1
             "albums" -> 2
@@ -211,25 +194,18 @@ class HomePageFragment : Fragment() {
         } else {
             requireContext().registerReceiver(refreshReceiver, filter)
         }
-        handler.postDelayed({
-            refreshDataPreserveState()
-        }, 300)
+        handler.postDelayed({ refreshDataPreserveState() }, 300)
     }
 
     override fun onPause() {
         super.onPause()
-        try {
-            requireContext().unregisterReceiver(refreshReceiver)
-        } catch (e: Exception) {
-            // Ignore if not registered
-        }
+        try { requireContext().unregisterReceiver(refreshReceiver) } catch (e: Exception) {}
         saveCurrentScrollState()
     }
 
     private fun initializeViews(view: View) {
         searchBar = view.findViewById(R.id.search_bar)
         drawerLayout = requireActivity().findViewById(R.id.drawer_layout)
-
         imgFavoritesOverlay = view.findViewById(R.id.img_favorites_overlay)
         imgPlaylistsOverlay = view.findViewById(R.id.img_playlists_overlay)
         imgRecentOverlay = view.findViewById(R.id.img_recent_overlay)
@@ -239,22 +215,11 @@ class HomePageFragment : Fragment() {
             (requireActivity() as? MainActivity)?.getMusicService()?.toggleShuffle()
         }
         view.findViewById<ImageButton>(R.id.btn_sort).setOnClickListener { showSortDialog() }
-        view.findViewById<View>(R.id.card_favorites).setOnClickListener {
-            (requireActivity() as? MainActivity)?.showFavoritesPage()
-        }
-        view.findViewById<View>(R.id.card_playlists).setOnClickListener {
-            (requireActivity() as? MainActivity)?.showPlaylistsPage()
-        }
-        view.findViewById<View>(R.id.card_recent).setOnClickListener {
-            (requireActivity() as? MainActivity)?.showRecentPage()
-        }
-        view.findViewById<ImageButton>(R.id.settings_icon).setOnClickListener {
-            drawerLayout.openDrawer(GravityCompat.START)
-        }
-        // Mic listener
-        view.findViewById<ImageButton>(R.id.voice_search_btn).setOnClickListener {
-            startVoiceRecognition()
-        }
+        view.findViewById<View>(R.id.card_favorites).setOnClickListener { (requireActivity() as? MainActivity)?.showFavoritesPage() }
+        view.findViewById<View>(R.id.card_playlists).setOnClickListener { (requireActivity() as? MainActivity)?.showPlaylistsPage() }
+        view.findViewById<View>(R.id.card_recent).setOnClickListener { (requireActivity() as? MainActivity)?.showRecentPage() }
+        view.findViewById<ImageButton>(R.id.settings_icon).setOnClickListener { drawerLayout.openDrawer(GravityCompat.START) }
+        view.findViewById<ImageButton>(R.id.voice_search_btn).setOnClickListener { startVoiceRecognition() }
     }
 
     private fun startVoiceRecognition() {
@@ -263,11 +228,8 @@ class HomePageFragment : Fragment() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search")
         }
-        try {
-            voiceRecognitionLauncher.launch(intent)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Voice recognition not supported", Toast.LENGTH_SHORT).show()
-        }
+        try { voiceRecognitionLauncher.launch(intent) }
+        catch (e: Exception) { Toast.makeText(requireContext(), "Voice recognition not supported", Toast.LENGTH_SHORT).show() }
     }
 
     fun setDrawerOpen(isOpen: Boolean) {
@@ -277,7 +239,6 @@ class HomePageFragment : Fragment() {
 
     private fun updateScrollingState() {
         try {
-            // Use the fragment cache to get all managed fragments
             val fragments = childFragmentCache.values
             if (isDrawerOpen) {
                 fragments.forEach { disableScrollingInFragment(it) }
@@ -290,74 +251,31 @@ class HomePageFragment : Fragment() {
                 view?.isEnabled = true
                 view?.isClickable = true
             }
-        } catch (e: Exception) {
-            Log.e("HomePageFragment", "Error updating scrolling state: ${e.message}")
-        }
+        } catch (e: Exception) { Log.e("HomePageFragment", "Error updating scrolling state: ${e.message}") }
     }
 
     private fun disableScrollingInFragment(fragment: Fragment?) {
         when (fragment) {
-            is SongsFragment -> {
-                fragment.setScrollingEnabled(false)
-                saveFragmentScrollState(fragment, "songs")
-            }
-            is ArtistsFragment -> {
-                fragment.setScrollingEnabled(false)
-                saveFragmentScrollState(fragment, "artists")
-            }
-            is AlbumsFragment -> {
-                fragment.setScrollingEnabled(false)
-                saveFragmentScrollState(fragment, "albums")
-            }
-            is GenresFragment -> {
-                fragment.setScrollingEnabled(false)
-                saveFragmentScrollState(fragment, "genres")
-            }
-            is VideosFragment -> {
-                fragment.setScrollingEnabled(false)
-                saveFragmentScrollState(fragment, "videos")
-            }
-            else -> {
-                fragment?.view?.let { fragmentView ->
-                    findAndDisableScrollViews(fragmentView)
-                    disableViewAndChildren(fragmentView)
-                }
-            }
+            is SongsFragment -> { fragment.setScrollingEnabled(false); fragment.saveScrollState() }
+            is ArtistsFragment -> { fragment.setScrollingEnabled(false); fragment.saveScrollState() }
+            is AlbumsFragment -> { fragment.setScrollingEnabled(false); fragment.saveScrollState() }
+            is GenresFragment -> { fragment.setScrollingEnabled(false); fragment.saveScrollState() }
+            is VideosFragment -> { fragment.setScrollingEnabled(false); fragment.saveScrollState() }
         }
     }
 
     private fun enableScrollingInFragment(fragment: Fragment?) {
         when (fragment) {
-            is SongsFragment -> {
-                fragment.setScrollingEnabled(true)
-                restoreFragmentScrollState(fragment, "songs")
-            }
-            is ArtistsFragment -> {
-                fragment.setScrollingEnabled(true)
-                restoreFragmentScrollState(fragment, "artists")
-            }
-            is AlbumsFragment -> {
-                fragment.setScrollingEnabled(true)
-                restoreFragmentScrollState(fragment, "albums")
-            }
-            is GenresFragment -> {
-                fragment.setScrollingEnabled(true)
-                restoreFragmentScrollState(fragment, "genres")
-            }
-            is VideosFragment -> {
-                fragment.setScrollingEnabled(true)
-                restoreFragmentScrollState(fragment, "videos")
-            }
-            else -> {
-                fragment?.view?.let { fragmentView ->
-                    findAndEnableScrollViews(fragmentView)
-                    enableViewAndChildren(fragmentView)
-                }
-            }
+            is SongsFragment -> { fragment.setScrollingEnabled(true); fragment.restoreScrollState() }
+            is ArtistsFragment -> { fragment.setScrollingEnabled(true); fragment.restoreScrollState() }
+            is AlbumsFragment -> { fragment.setScrollingEnabled(true); fragment.restoreScrollState() }
+            is GenresFragment -> { fragment.setScrollingEnabled(true); fragment.restoreScrollState() }
+            is VideosFragment -> { fragment.setScrollingEnabled(true); fragment.restoreScrollState() }
         }
     }
 
-    private fun saveFragmentScrollState(fragment: Fragment, tabName: String) {
+    private fun saveCurrentScrollState() {
+        val fragment = getCurrentActiveFragment()
         when (fragment) {
             is SongsFragment -> fragment.saveScrollState()
             is ArtistsFragment -> fragment.saveScrollState()
@@ -367,88 +285,12 @@ class HomePageFragment : Fragment() {
         }
     }
 
-    private fun restoreFragmentScrollState(fragment: Fragment, tabName: String) {
-        when (fragment) {
-            is SongsFragment -> fragment.restoreScrollState()
-            is ArtistsFragment -> fragment.restoreScrollState()
-            is AlbumsFragment -> fragment.restoreScrollState()
-            is GenresFragment -> fragment.restoreScrollState()
-            is VideosFragment -> fragment.restoreScrollState()
-        }
-    }
-
-    private fun findAndDisableScrollViews(view: View) {
-        when (view) {
-            is RecyclerView -> {
-                view.isNestedScrollingEnabled = false
-                view.isEnabled = false
-                view.setOnTouchListener { _, _ -> true } // Block all touch events
-            }
-            is androidx.core.widget.NestedScrollView -> {
-                view.isNestedScrollingEnabled = false
-                view.isEnabled = false
-                view.setOnTouchListener { _, _ -> true } // Block all touch events
-            }
-            is ViewGroup -> {
-                for (i in 0 until view.childCount) {
-                    findAndDisableScrollViews(view.getChildAt(i))
-                }
-            }
-        }
-    }
-
-    private fun findAndEnableScrollViews(view: View) {
-        when (view) {
-            is RecyclerView -> {
-                view.isNestedScrollingEnabled = true
-                view.isEnabled = true
-                view.setOnTouchListener(null) // Remove touch blocker
-            }
-            is androidx.core.widget.NestedScrollView -> {
-                view.isNestedScrollingEnabled = true
-                view.isEnabled = true
-                view.setOnTouchListener(null) // Remove touch blocker
-            }
-            is ViewGroup -> {
-                for (i in 0 until view.childCount) {
-                    findAndEnableScrollViews(view.getChildAt(i))
-                }
-            }
-        }
-    }
-
-    private fun disableViewAndChildren(view: View) {
-        view.isEnabled = false
-        view.isClickable = false
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                disableViewAndChildren(view.getChildAt(i))
-            }
-        }
-    }
-
-    private fun enableViewAndChildren(view: View) {
-        view.isEnabled = true
-        view.isClickable = true
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                enableViewAndChildren(view.getChildAt(i))
-            }
-        }
-    }
-
     private fun setupCategoryTabs() {
         val tabs = mapOf(
-            R.id.tab_songs to 0,
-            R.id.tab_artists to 1,
-            R.id.tab_albums to 2,
-            R.id.tab_genres to 3,
-            R.id.tab_videos to 4
+            R.id.tab_songs to 0, R.id.tab_artists to 1, R.id.tab_albums to 2, R.id.tab_genres to 3, R.id.tab_videos to 4
         )
         tabs.forEach { (tabId, position) ->
-            view?.findViewById<TextView>(tabId)?.setOnClickListener {
-                viewPager.setCurrentItem(position, true)
-            }
+            view?.findViewById<TextView>(tabId)?.setOnClickListener { viewPager.setCurrentItem(position, true) }
         }
     }
 
@@ -471,12 +313,14 @@ class HomePageFragment : Fragment() {
         }
     }
 
+    // UPDATED: Broadcast correctly for VIDEOS
     private fun applySortToCurrentFragment(sortType: MainActivity.SortType) {
         val intent = when (currentCategory) {
             "songs" -> Intent("SORT_SONGS")
             "artists" -> Intent("SORT_ARTISTS")
             "albums" -> Intent("SORT_ALBUMS")
             "genres" -> Intent("SORT_GENRES")
+            "videos" -> Intent("SORT_VIDEOS") // Fixed: Added Video Support
             else -> return
         }.apply {
             putExtra("sort_type", sortType.ordinal)
@@ -501,9 +345,7 @@ class HomePageFragment : Fragment() {
                     }
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "Error shuffling songs: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                withContext(Dispatchers.Main) { Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show() }
             }
         }
     }
@@ -526,16 +368,11 @@ class HomePageFragment : Fragment() {
         val albumArtUri: android.net.Uri? = if (songId != null) {
             val song = SongRepository.getAllSongs(context).firstOrNull { it.id == songId }
             song?.let { SongUtils.getAlbumArtUri(it.albumId) }
-        } else {
-            null
-        }
+        } else null
         withContext(Dispatchers.Main) {
             imageView.clearColorFilter()
-            if (albumArtUri != null) {
-                Glide.with(context).load(albumArtUri).centerCrop().placeholder(R.drawable.default_album_art).into(imageView)
-            } else {
-                imageView.setImageResource(R.drawable.default_album_art)
-            }
+            if (albumArtUri != null) Glide.with(context).load(albumArtUri).centerCrop().placeholder(R.drawable.default_album_art).into(imageView)
+            else imageView.setImageResource(R.drawable.default_album_art)
         }
     }
 
@@ -544,27 +381,18 @@ class HomePageFragment : Fragment() {
         CoroutineScope(Dispatchers.IO).launch {
             val context = requireContext()
             val favoritesCount = PreferenceManager.getFavorites(context).size
-            withContext(Dispatchers.Main) {
-                view?.findViewById<TextView>(R.id.card_fav_count)?.text = "$favoritesCount songs"
-            }
             val playlistsCount = PreferenceManager.getPlaylists(context).size
-            withContext(Dispatchers.Main) {
-                view?.findViewById<TextView>(R.id.card_playlist_count)?.text = "$playlistsCount playlists"
-            }
             val recentCount = PreferenceManager.getRecentSongs(context).size
             withContext(Dispatchers.Main) {
+                view?.findViewById<TextView>(R.id.card_fav_count)?.text = "$favoritesCount songs"
+                view?.findViewById<TextView>(R.id.card_playlist_count)?.text = "$playlistsCount playlists"
                 view?.findViewById<TextView>(R.id.card_recent_count)?.text = "$recentCount songs"
             }
         }
     }
 
+    // UPDATED: Implemented sorting options for Videos
     private fun showSortDialog() {
-        // Video sorting not implemented yet
-        if (currentCategory == "videos") {
-            Toast.makeText(requireContext(), "Sorting not available for videos yet", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         val sortOptions: List<Pair<String, MainActivity.SortType>> = when (currentCategory) {
             "songs" -> listOf(
                 "Name (A-Z)" to MainActivity.SortType.NAME_ASC,
@@ -585,6 +413,13 @@ class HomePageFragment : Fragment() {
                 "Genre Name (A-Z)" to MainActivity.SortType.NAME_ASC,
                 "Genre Name (Z-A)" to MainActivity.SortType.NAME_DESC
             )
+            "videos" -> listOf(
+                "Name (A-Z)" to MainActivity.SortType.NAME_ASC,
+                "Name (Z-A)" to MainActivity.SortType.NAME_DESC,
+                "Date Added (Newest)" to MainActivity.SortType.DATE_ADDED_DESC,
+                "Date Added (Oldest)" to MainActivity.SortType.DATE_ADDED_ASC,
+                "Duration" to MainActivity.SortType.DURATION
+            )
             else -> return
         }
         val items = sortOptions.map { it.first }.toTypedArray()
@@ -604,14 +439,12 @@ class HomePageFragment : Fragment() {
     }
 
     fun refreshData() {
-        Log.d("HomePageFragment", "refreshData called")
         loadCardAlbumArt()
         loadQuickActionCardData()
         refreshCurrentFragment()
     }
 
     private fun refreshDataPreserveState() {
-        Log.d("HomePageFragment", "refreshDataPreserveState called")
         loadCardAlbumArt()
         loadQuickActionCardData()
         refreshCurrentFragmentPreserveState()
@@ -619,7 +452,6 @@ class HomePageFragment : Fragment() {
 
     private fun getCurrentActiveFragment(): Fragment? {
         if (!this::viewPager.isInitialized) return null
-        // ViewPager2 fragments are tagged by the FragmentManager as "f" + position
         return childFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
     }
 
@@ -633,9 +465,7 @@ class HomePageFragment : Fragment() {
                 is GenresFragment -> if (fragment.isAdded) fragment.refreshData()
                 is VideosFragment -> if (fragment.isAdded) fragment.refreshData()
             }
-        } catch (e: Exception) {
-            Log.e("HomePageFragment", "Error refreshing fragment: ${e.message}")
-        }
+        } catch (e: Exception) { Log.e("HomePageFragment", "Error refreshing fragment: ${e.message}") }
     }
 
     private fun refreshCurrentFragmentPreserveState() {
@@ -648,20 +478,7 @@ class HomePageFragment : Fragment() {
                 is GenresFragment -> if (fragment.isAdded) fragment.refreshDataPreserveState()
                 is VideosFragment -> if (fragment.isAdded) fragment.refreshDataPreserveState()
             }
-        } catch (e: Exception) {
-            Log.e("HomePageFragment", "Error refreshing fragment with state preservation: ${e.message}")
-        }
-    }
-
-    private fun saveCurrentScrollState() {
-        val fragment = getCurrentActiveFragment()
-        when (fragment) {
-            is SongsFragment -> fragment.saveScrollState()
-            is ArtistsFragment -> fragment.saveScrollState()
-            is AlbumsFragment -> fragment.saveScrollState()
-            is GenresFragment -> fragment.saveScrollState()
-            is VideosFragment -> fragment.saveScrollState()
-        }
+        } catch (e: Exception) { Log.e("HomePageFragment", "Error refreshing fragment with state preservation: ${e.message}") }
     }
 
     companion object {

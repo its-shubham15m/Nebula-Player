@@ -36,6 +36,7 @@ object PreferenceManager {
     private const val KEY_SORT_ARTISTS = "sort_artists"
     private const val KEY_SORT_ALBUMS = "sort_albums"
     private const val KEY_SORT_GENRES = "sort_genres"
+    private const val KEY_SORT_VIDEOS = "sort_videos" // NEW: Specific key for videos
 
     // Professional Audio Settings
     private const val KEY_CROSSFADE_ENABLED = "crossfade_enabled"
@@ -89,6 +90,7 @@ object PreferenceManager {
             "artists" -> KEY_SORT_ARTISTS
             "albums" -> KEY_SORT_ALBUMS
             "genres" -> KEY_SORT_GENRES
+            "videos" -> KEY_SORT_VIDEOS
             else -> KEY_SORT_SONGS
         }
         getPreferences(context).edit().putInt(key, sortType.ordinal).apply()
@@ -100,10 +102,12 @@ object PreferenceManager {
             "artists" -> KEY_SORT_ARTISTS
             "albums" -> KEY_SORT_ALBUMS
             "genres" -> KEY_SORT_GENRES
+            "videos" -> KEY_SORT_VIDEOS
             else -> KEY_SORT_SONGS
         }
+        // Default Sort: Newest First for Songs/Videos, A-Z for others
         val defaultSort = when (category) {
-            "songs" -> MainActivity.SortType.DATE_ADDED_DESC.ordinal
+            "songs", "videos" -> MainActivity.SortType.DATE_ADDED_DESC.ordinal
             else -> MainActivity.SortType.NAME_ASC.ordinal
         }
         val sortOrdinal = getPreferences(context).getInt(key, defaultSort)
@@ -158,7 +162,7 @@ object PreferenceManager {
         else recentString.split(",").mapNotNull { it.toLongOrNull() }
     }
 
-    // --- Playlists (RESTORED METHODS) ---
+    // --- Playlists ---
     fun savePlaylists(context: Context, playlists: List<Playlist>) {
         val gson = Gson()
         val json = gson.toJson(playlists)
@@ -175,7 +179,6 @@ object PreferenceManager {
         }
     }
 
-    // These were missing in the previous version
     fun addSongToPlaylist(context: Context, playlistId: Long, songId: Long) {
         val playlists = getPlaylists(context).toMutableList()
         playlists.find { it.id == playlistId }?.songIds?.add(songId)
