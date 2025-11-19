@@ -79,9 +79,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var themeLight: RadioButton
     private lateinit var themeDark: RadioButton
 
-    // Permission handling
+    // Permission handling - UPDATED FOR VIDEOS
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
+        arrayOf(Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO)
     } else {
         arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
     }
@@ -210,7 +210,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun hasRequiredPermissions(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
+            val audioGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
+            val videoGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
+            return audioGranted && videoGranted
         } else {
             return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
@@ -222,13 +224,13 @@ class MainActivity : AppCompatActivity() {
         isShowingPermissionDialog = true
 
         val permissionMessage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            "Nebula Music needs access to your audio files to play music, create playlists, and manage your music library.\n\nThis permission allows the app to:\n• Browse and play your music\n• Create and manage playlists\n• Display album art and song information\n• Remember your playback preferences"
+            "Nebula Music needs access to your audio and video files to play music, create playlists, show videos, and manage your library.\n\nThis permission allows the app to:\n• Browse and play your music and videos\n• Create and manage playlists\n• Display album art and song information\n• Remember your playback preferences"
         } else {
-            "Nebula Music needs access to your storage to play music, create playlists, and manage your music library.\n\nThis permission allows the app to:\n• Browse and play your music files\n• Create and manage playlists\n• Display album art and song information\n• Remember your playback preferences"
+            "Nebula Music needs access to your storage to play music and videos, create playlists, and manage your library.\n\nThis permission allows the app to:\n• Browse and play your music files\n• Create and manage playlists\n• Display album art and song information\n• Remember your playback preferences"
         }
 
         AlertDialog.Builder(this)
-            .setTitle("Allow Access to Your Music")
+            .setTitle("Allow Access to Media")
             .setMessage(permissionMessage)
             .setPositiveButton("Allow") { dialog, _ ->
                 dialog.dismiss()
@@ -255,6 +257,9 @@ class MainActivity : AppCompatActivity() {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
             }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.READ_MEDIA_VIDEO)
+            }
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -275,9 +280,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun showPermissionDeniedDialog() {
         val deniedMessage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            "You've denied access to your audio files. Without this permission, Nebula Music cannot:\n\n• Play your music\n• Create playlists\n• Display your music library\n• Save your preferences\n\nYou can grant permission in Settings or continue with limited functionality."
+            "You've denied access to your media files. Without this permission, Nebula Music cannot:\n\n• Play your music or videos\n• Create playlists\n• Display your library\n• Save your preferences\n\nYou can grant permission in Settings or continue with limited functionality."
         } else {
-            "You've denied access to your storage. Without this permission, Nebula Music cannot:\n\n• Play your music files\n• Create playlists\n• Display your music library\n• Save your preferences\n\nYou can grant permission in Settings or continue with limited functionality."
+            "You've denied access to your storage. Without this permission, Nebula Music cannot:\n\n• Play your music or videos\n• Create playlists\n• Display your library\n• Save your preferences\n\nYou can grant permission in Settings or continue with limited functionality."
         }
 
         AlertDialog.Builder(this)

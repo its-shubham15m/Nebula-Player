@@ -94,9 +94,9 @@ class HomePageFragment : Fragment() {
         }
     }
 
-    // Adapter for the ViewPager2
+    // Adapter for the ViewPager2 - UPDATED FOR 5 TABS
     private inner class CategoryPagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
-        override fun getItemCount(): Int = 4
+        override fun getItemCount(): Int = 5 // Songs, Artists, Albums, Genres, Videos
 
         override fun createFragment(position: Int): Fragment {
             return when (position) {
@@ -104,6 +104,7 @@ class HomePageFragment : Fragment() {
                 1 -> childFragmentCache.getOrPut("artists") { ArtistsFragment() }
                 2 -> childFragmentCache.getOrPut("albums") { AlbumsFragment() }
                 3 -> childFragmentCache.getOrPut("genres") { GenresFragment() }
+                4 -> childFragmentCache.getOrPut("videos") { VideosFragment() } // New Fragment
                 else -> throw IllegalStateException("Invalid pager position $position")
             }
         }
@@ -142,14 +143,18 @@ class HomePageFragment : Fragment() {
                     1 -> "artists"
                     2 -> "albums"
                     3 -> "genres"
+                    4 -> "videos"
                     else -> "songs"
                 }
                 currentCategory = newCategory
                 updateTabUI(position)
-                // Apply sort preference when switching to a new tab
-                handler.post {
-                    val currentSortType = PreferenceManager.getSortPreferenceWithDefault(requireContext(), newCategory)
-                    applySortToCurrentFragment(currentSortType)
+
+                // Only apply sort preference for audio categories
+                if (position < 4) {
+                    handler.post {
+                        val currentSortType = PreferenceManager.getSortPreferenceWithDefault(requireContext(), newCategory)
+                        applySortToCurrentFragment(currentSortType)
+                    }
                 }
             }
         })
@@ -181,6 +186,7 @@ class HomePageFragment : Fragment() {
             "artists" -> 1
             "albums" -> 2
             "genres" -> 3
+            "videos" -> 4
             else -> 0
         }
         viewPager.setCurrentItem(initialPosition, false)
@@ -307,6 +313,10 @@ class HomePageFragment : Fragment() {
                 fragment.setScrollingEnabled(false)
                 saveFragmentScrollState(fragment, "genres")
             }
+            is VideosFragment -> {
+                fragment.setScrollingEnabled(false)
+                saveFragmentScrollState(fragment, "videos")
+            }
             else -> {
                 fragment?.view?.let { fragmentView ->
                     findAndDisableScrollViews(fragmentView)
@@ -334,6 +344,10 @@ class HomePageFragment : Fragment() {
                 fragment.setScrollingEnabled(true)
                 restoreFragmentScrollState(fragment, "genres")
             }
+            is VideosFragment -> {
+                fragment.setScrollingEnabled(true)
+                restoreFragmentScrollState(fragment, "videos")
+            }
             else -> {
                 fragment?.view?.let { fragmentView ->
                     findAndEnableScrollViews(fragmentView)
@@ -349,6 +363,7 @@ class HomePageFragment : Fragment() {
             is ArtistsFragment -> fragment.saveScrollState()
             is AlbumsFragment -> fragment.saveScrollState()
             is GenresFragment -> fragment.saveScrollState()
+            is VideosFragment -> fragment.saveScrollState()
         }
     }
 
@@ -358,6 +373,7 @@ class HomePageFragment : Fragment() {
             is ArtistsFragment -> fragment.restoreScrollState()
             is AlbumsFragment -> fragment.restoreScrollState()
             is GenresFragment -> fragment.restoreScrollState()
+            is VideosFragment -> fragment.restoreScrollState()
         }
     }
 
@@ -426,7 +442,8 @@ class HomePageFragment : Fragment() {
             R.id.tab_songs to 0,
             R.id.tab_artists to 1,
             R.id.tab_albums to 2,
-            R.id.tab_genres to 3
+            R.id.tab_genres to 3,
+            R.id.tab_videos to 4
         )
         tabs.forEach { (tabId, position) ->
             view?.findViewById<TextView>(tabId)?.setOnClickListener {
@@ -438,7 +455,7 @@ class HomePageFragment : Fragment() {
     private fun updateTabUI(position: Int) {
         val selectedColor = ContextCompat.getColor(requireContext(), R.color.purple_500)
         val unselectedColor = ContextCompat.getColor(requireContext(), android.R.color.darker_gray)
-        val tabs = listOf(R.id.tab_songs, R.id.tab_artists, R.id.tab_albums, R.id.tab_genres)
+        val tabs = listOf(R.id.tab_songs, R.id.tab_artists, R.id.tab_albums, R.id.tab_genres, R.id.tab_videos)
 
         tabs.forEachIndexed { index, tabId ->
             val tab = view?.findViewById<TextView>(tabId)
@@ -542,6 +559,12 @@ class HomePageFragment : Fragment() {
     }
 
     private fun showSortDialog() {
+        // Video sorting not implemented yet
+        if (currentCategory == "videos") {
+            Toast.makeText(requireContext(), "Sorting not available for videos yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val sortOptions: List<Pair<String, MainActivity.SortType>> = when (currentCategory) {
             "songs" -> listOf(
                 "Name (A-Z)" to MainActivity.SortType.NAME_ASC,
@@ -608,6 +631,7 @@ class HomePageFragment : Fragment() {
                 is ArtistsFragment -> if (fragment.isAdded) fragment.refreshData()
                 is AlbumsFragment -> if (fragment.isAdded) fragment.refreshData()
                 is GenresFragment -> if (fragment.isAdded) fragment.refreshData()
+                is VideosFragment -> if (fragment.isAdded) fragment.refreshData()
             }
         } catch (e: Exception) {
             Log.e("HomePageFragment", "Error refreshing fragment: ${e.message}")
@@ -622,6 +646,7 @@ class HomePageFragment : Fragment() {
                 is ArtistsFragment -> if (fragment.isAdded) fragment.refreshDataPreserveState()
                 is AlbumsFragment -> if (fragment.isAdded) fragment.refreshDataPreserveState()
                 is GenresFragment -> if (fragment.isAdded) fragment.refreshDataPreserveState()
+                is VideosFragment -> if (fragment.isAdded) fragment.refreshDataPreserveState()
             }
         } catch (e: Exception) {
             Log.e("HomePageFragment", "Error refreshing fragment with state preservation: ${e.message}")
@@ -635,6 +660,7 @@ class HomePageFragment : Fragment() {
             is ArtistsFragment -> fragment.saveScrollState()
             is AlbumsFragment -> fragment.saveScrollState()
             is GenresFragment -> fragment.saveScrollState()
+            is VideosFragment -> fragment.saveScrollState()
         }
     }
 
