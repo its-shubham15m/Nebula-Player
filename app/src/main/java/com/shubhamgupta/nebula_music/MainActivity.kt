@@ -197,8 +197,10 @@ class MainActivity : AppCompatActivity() {
         // Apply saved theme BEFORE setting content view
         ThemeManager.applySavedTheme(this)
 
-        // Set window background to prevent flash
-        window.setBackgroundDrawableResource(android.R.color.transparent)
+        // Set window background to prevent flash (safer check)
+        if (window.attributes.windowAnimations == 0 || window.decorView.background == null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent)
+        }
 
         // Set content view after theme is applied
         setContentView(R.layout.activity_main)
@@ -362,6 +364,7 @@ class MainActivity : AppCompatActivity() {
 
         initializeViews()
         setupMiniPlayerInsets()
+        setupSidebarInsets() // NEW: Setup insets for the sidebar
         setupThemeFunctionality()
         setupBackPressHandler()
         setupDrawerListener()
@@ -413,6 +416,7 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(queueUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             // For older versions, use the old method
+            @Suppress("DEPRECATION")
             registerReceiver(queueUpdateReceiver, filter)
         }
     }
@@ -431,6 +435,36 @@ class MainActivity : AppCompatActivity() {
             miniPlayerContainer.layoutParams = params
 
             // Return the insets so that other views can also use them
+            insets
+        }
+    }
+
+    /**
+     * Applies bottom padding to the sidebar footer to account for the system navigation bar.
+     */
+    private fun setupSidebarInsets() {
+        val sidebar = findViewById<View>(R.id.sidebar)
+        val sidebarFooterContainer = findViewById<View>(R.id.sidebar_footer_container)
+
+        // This ensures the sidebar content is pushed up when the navigation bar is visible.
+        ViewCompat.setOnApplyWindowInsetsListener(sidebar) { v, insets ->
+            val systemBarInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            // The sidebar_footer_container has an existing padding of 16dp in XML,
+            // we will add the system bottom inset to this padding.
+            val originalPaddingDp = 16f
+            val originalBottomPaddingPx = (originalPaddingDp * resources.displayMetrics.density).toInt()
+            val newBottomPadding = originalBottomPaddingPx + systemBarInsets.bottom
+
+            // Apply new padding to the sidebar footer container to lift the content
+            sidebarFooterContainer.setPadding(
+                sidebarFooterContainer.paddingLeft,
+                sidebarFooterContainer.paddingTop,
+                sidebarFooterContainer.paddingRight,
+                newBottomPadding
+            )
+
+            // Return the insets so other views can consume them if necessary
             insets
         }
     }
@@ -462,6 +496,7 @@ class MainActivity : AppCompatActivity() {
             }
             ThemeManager.THEME_SYSTEM -> {
                 // Follow system setting
+                @Suppress("DEPRECATION")
                 val isLightTheme = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_NO
                 windowController.isAppearanceLightStatusBars = isLightTheme
                 windowController.isAppearanceLightNavigationBars = isLightTheme
@@ -470,6 +505,7 @@ class MainActivity : AppCompatActivity() {
 
         // Add this to ensure the colors are applied immediately
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        @Suppress("DEPRECATION")
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
     }
 
