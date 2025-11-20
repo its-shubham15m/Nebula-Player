@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent">
+
+    <LinearLayout
+        android:layout_width="360dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:background="@drawable/subtitle_sheet_background"
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="16dp"
+        android:elevation="0dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Subtitle Appearance"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="Size"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"/>
+            <SeekBar
+                android:id="@+id/seek_font_size"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="60"
+                android:progress="20"
+                android:progressTint="#FFFFFF"
+                android:thumbTint="#FFFFFF"
+                android:maxHeight="2dp"
+                android:minHeight="2dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="Color"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"/>
+
+            <HorizontalScrollView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:scrollbars="none">
+                <RadioGroup
+                    android:id="@+id/rg_text_color"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <RadioButton android:id="@+id/tc_white" android:text="White" android:textColor="#FFFFFF" android:buttonTint="#FFFFFF" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                    <RadioButton android:id="@+id/tc_yellow" android:text="Yellow" android:textColor="#FFEB3B" android:buttonTint="#FFEB3B" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                    <RadioButton android:id="@+id/tc_cyan" android:text="Cyan" android:textColor="#00BCD4" android:buttonTint="#00BCD4" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                    <RadioButton android:id="@+id/tc_green" android:text="Green" android:textColor="#4CAF50" android:buttonTint="#4CAF50" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                </RadioGroup>
+            </HorizontalScrollView>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:text="Opacity"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"/>
+
+            <HorizontalScrollView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:scrollbars="none">
+                <RadioGroup
+                    android:id="@+id/rg_opacity"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <RadioButton android:id="@+id/btn_op_0" android:text="None" android:textColor="#FFFFFF" android:buttonTint="#FFFFFF" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                    <RadioButton android:id="@+id/btn_op_25" android:text="25%" android:textColor="#FFFFFF" android:buttonTint="#FFFFFF" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                    <RadioButton android:id="@+id/btn_op_50" android:text="50%" android:textColor="#FFFFFF" android:buttonTint="#FFFFFF" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                    <RadioButton android:id="@+id/btn_op_75" android:text="75%" android:textColor="#FFFFFF" android:buttonTint="#FFFFFF" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                    <RadioButton android:id="@+id/btn_op_100" android:text="100%" android:textColor="#FFFFFF" android:buttonTint="#FFFFFF" android:layout_width="wrap_content" android:layout_height="32dp" android:textSize="12sp" android:paddingEnd="12dp"/>
+                </RadioGroup>
+            </HorizontalScrollView>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
+            <TextView
+                android:text="Position"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"/>
+            <SeekBar
+                android:id="@+id/seek_position"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="50"
+                android:progress="8"
+                android:progressTint="#FFFFFF"
+                android:thumbTint="#FFFFFF"
+                android:maxHeight="2dp"
+                android:minHeight="2dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"/>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_apply"
+            android:layout_width="match_parent"
+            android:layout_height="32dp"
+            android:text="DONE"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:backgroundTint="#3EA6FF"
+            android:textColor="#FFFFFF"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"/>
+
+    </LinearLayout>
+</FrameLayout>

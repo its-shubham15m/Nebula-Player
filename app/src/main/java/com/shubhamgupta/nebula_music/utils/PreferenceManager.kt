@@ -9,8 +9,6 @@ import com.shubhamgupta.nebula_music.MainActivity
 import com.shubhamgupta.nebula_music.models.Playlist
 import com.shubhamgupta.nebula_music.models.Song
 import com.shubhamgupta.nebula_music.service.MusicService
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 object PreferenceManager {
 
@@ -36,7 +34,7 @@ object PreferenceManager {
     private const val KEY_SORT_ARTISTS = "sort_artists"
     private const val KEY_SORT_ALBUMS = "sort_albums"
     private const val KEY_SORT_GENRES = "sort_genres"
-    private const val KEY_SORT_VIDEOS = "sort_videos" // NEW: Specific key for videos
+    private const val KEY_SORT_VIDEOS = "sort_videos"
 
     // Professional Audio Settings
     private const val KEY_CROSSFADE_ENABLED = "crossfade_enabled"
@@ -44,9 +42,20 @@ object PreferenceManager {
     private const val KEY_GAPLESS_PLAYBACK = "gapless_playback"
     private const val KEY_FILTER_SHORT_AUDIO = "filter_short_audio"
 
-    // Future Video Player Settings
+    // --- NEW: Video Player Persistence ---
     private const val KEY_VIDEO_HW_ACCELERATION = "video_hw_acceleration"
     private const val KEY_VIDEO_BG_PLAYBACK = "video_bg_playback"
+    private const val KEY_LAST_VIDEO_VOLUME = "last_video_volume"
+    private const val KEY_LAST_VIDEO_BRIGHTNESS = "last_video_brightness"
+    private const val KEY_LAST_ASPECT_RATIO_MODE = "last_aspect_ratio_mode"
+    private const val KEY_VIDEO_RESUME_MAP = "video_resume_map" // JSON Map<VideoID, Position>
+
+    // --- NEW: Subtitle Settings ---
+    private const val KEY_SUB_FONT_SIZE = "sub_font_size"
+    private const val KEY_SUB_TEXT_COLOR = "sub_text_color"
+    private const val KEY_SUB_BG_COLOR = "sub_bg_color"
+    private const val KEY_SUB_BG_OPACITY = "sub_bg_opacity"
+    private const val KEY_SUB_BOTTOM_PADDING = "sub_bottom_padding" // Position from bottom
 
     // Cache
     private var cachedSongsMap: Map<Long, Song> = emptyMap()
@@ -55,13 +64,18 @@ object PreferenceManager {
     fun init(context: Context) {
         val prefs = getPreferences(context)
         if (!prefs.contains(KEY_CROSSFADE_DURATION)) {
-            prefs.edit().putInt(KEY_CROSSFADE_DURATION, 5).apply() // Default 5s
+            prefs.edit().putInt(KEY_CROSSFADE_DURATION, 5).apply()
         }
     }
 
     private fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
+
+    // ... (Keep existing Audio/Sort/Favorite/Playlist methods as they were) ...
+    // [OMITTED FOR BREVITY - COPY PASTE EXISTING METHODS HERE]
+    // Start copying from: isCrossfadeEnabled down to getSongsForQueue
+    // Below are the NEW methods for the Video Player
 
     // --- Audio Settings ---
     fun isCrossfadeEnabled(context: Context): Boolean = getPreferences(context).getBoolean(KEY_CROSSFADE_ENABLED, false)
@@ -383,12 +397,75 @@ object PreferenceManager {
     suspend fun getCachedSongsMap(context: Context): Map<Long, Song> {
         if (isCacheDirty || cachedSongsMap.isEmpty()) {
             // In a real app, access cache manager here
-            // For now, assume cache is handled externally or via SongRepository
         }
         return cachedSongsMap
     }
 
     suspend fun getSongsForQueue(context: Context, songIds: List<Long>): List<Song> {
         return emptyList()
+    }
+
+    // --- VIDEO PLAYER PERSISTENCE ---
+
+    fun saveVideoVolume(context: Context, volumePercent: Int) {
+        getPreferences(context).edit().putInt(KEY_LAST_VIDEO_VOLUME, volumePercent).apply()
+    }
+    fun getLastVideoVolume(context: Context): Int = getPreferences(context).getInt(KEY_LAST_VIDEO_VOLUME, -1) // -1 means use system
+
+    fun saveVideoBrightness(context: Context, brightness: Float) {
+        getPreferences(context).edit().putFloat(KEY_LAST_VIDEO_BRIGHTNESS, brightness).apply()
+    }
+    fun getLastVideoBrightness(context: Context): Float = getPreferences(context).getFloat(KEY_LAST_VIDEO_BRIGHTNESS, -1f)
+
+    fun saveVideoAspectRatioMode(context: Context, modeIndex: Int) {
+        getPreferences(context).edit().putInt(KEY_LAST_ASPECT_RATIO_MODE, modeIndex).apply()
+    }
+    fun getLastVideoAspectRatioMode(context: Context): Int = getPreferences(context).getInt(KEY_LAST_ASPECT_RATIO_MODE, 0) // 0 = BEST_FIT
+
+    // Resume Logic
+    fun saveVideoResumePosition(context: Context, videoId: Long, position: Long) {
+        val json = getPreferences(context).getString(KEY_VIDEO_RESUME_MAP, "{}")
+        val type = object : TypeToken<HashMap<Long, Long>>() {}.type
+        val map: HashMap<Long, Long> = Gson().fromJson(json, type) ?: hashMapOf()
+        map[videoId] = position
+        getPreferences(context).edit().putString(KEY_VIDEO_RESUME_MAP, Gson().toJson(map)).apply()
+    }
+
+    fun getVideoResumePosition(context: Context, videoId: Long): Long {
+        val json = getPreferences(context).getString(KEY_VIDEO_RESUME_MAP, "{}")
+        val type = object : TypeToken<HashMap<Long, Long>>() {}.type
+        val map: HashMap<Long, Long> = Gson().fromJson(json, type) ?: hashMapOf()
+        return map[videoId] ?: 0L
+    }
+
+    // --- SUBTITLE SETTINGS ---
+
+    data class SubtitleSettings(
+        val fontSize: Int,    // 16, 20, 24, etc.
+        val textColor: Int,   // Color Int
+        val bgColor: Int,     // Color Int (without alpha)
+        val bgOpacity: Int,   // 0, 25, 50, 75, 100
+        val bottomPadding: Float // 0.05f to 0.5f
+    )
+
+    fun saveSubtitleSettings(context: Context, settings: SubtitleSettings) {
+        getPreferences(context).edit().apply {
+            putInt(KEY_SUB_FONT_SIZE, settings.fontSize)
+            putInt(KEY_SUB_TEXT_COLOR, settings.textColor)
+            putInt(KEY_SUB_BG_COLOR, settings.bgColor)
+            putInt(KEY_SUB_BG_OPACITY, settings.bgOpacity)
+            putFloat(KEY_SUB_BOTTOM_PADDING, settings.bottomPadding)
+        }.apply()
+    }
+
+    fun getSubtitleSettings(context: Context): SubtitleSettings {
+        val prefs = getPreferences(context)
+        return SubtitleSettings(
+            fontSize = prefs.getInt(KEY_SUB_FONT_SIZE, 20),
+            textColor = prefs.getInt(KEY_SUB_TEXT_COLOR, android.graphics.Color.WHITE),
+            bgColor = prefs.getInt(KEY_SUB_BG_COLOR, android.graphics.Color.BLACK),
+            bgOpacity = prefs.getInt(KEY_SUB_BG_OPACITY, 0), // Default Transparent
+            bottomPadding = prefs.getFloat(KEY_SUB_BOTTOM_PADDING, 0.08f)
+        )
     }
 }

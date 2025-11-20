@@ -8,35 +8,33 @@
     android:background="#000000"
     android:keepScreenOn="true">
 
-    <VideoView
-        android:id="@+id/player_video_view"
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_centerInParent="true" />
+        android:layout_centerInParent="true"
+        app:use_controller="false"
+        app:surface_type="surface_view"
+        app:resize_mode="fit"
+        app:shutter_background_color="#000000" />
 
+    <!-- Subtitle View -->
     <TextView
         android:id="@+id/subtitle_view"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:layout_marginBottom="110dp"
+        android:layout_marginBottom="80dp"
         android:layout_centerHorizontal="true"
         android:gravity="center"
-        android:paddingHorizontal="16dp"
+        android:paddingHorizontal="8dp"
         android:paddingVertical="4dp"
         android:textColor="#FFFFFF"
         android:textSize="20sp"
-        android:shadowColor="#000000"
-        android:shadowDx="2"
-        android:shadowDy="2"
-        android:shadowRadius="3"
-        android:textStyle="bold"
-        android:background="#40000000"
-        android:elevation="10dp"
         android:visibility="gone"
-        tools:text="This is a subtitle text example"
-        tools:visibility="visible"/>
+        tools:text="Subtitles appear here"/>
 
+    <!-- Touch Overlay for Gestures -->
     <View
         android:id="@+id/touch_overlay"
         android:layout_width="match_parent"
@@ -44,6 +42,7 @@
         android:clickable="true"
         android:focusable="true" />
 
+    <!-- Center Info (Volume/Brightness) -->
     <LinearLayout
         android:id="@+id/center_info_layout"
         android:layout_width="wrap_content"
@@ -74,6 +73,7 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- Rewind Overlay -->
     <FrameLayout
         android:id="@+id/rewind_overlay"
         android:layout_width="120dp"
@@ -96,6 +96,7 @@
         </LinearLayout>
     </FrameLayout>
 
+    <!-- Forward Overlay -->
     <FrameLayout
         android:id="@+id/forward_overlay"
         android:layout_width="120dp"
@@ -118,6 +119,7 @@
         </LinearLayout>
     </FrameLayout>
 
+    <!-- Lock Overlay -->
     <FrameLayout
         android:id="@+id/lock_overlay"
         android:layout_width="wrap_content"
@@ -138,14 +140,36 @@
             android:padding="12dp"/>
     </FrameLayout>
 
+    <!-- SEEK PEEK PREVIEW -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/seek_peek_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/bottom_controls"
+        android:layout_marginBottom="8dp"
+        app:cardCornerRadius="8dp"
+        app:cardBackgroundColor="#CC000000"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/seek_peek_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="01:20"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:padding="8dp"/>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Top Controls with Gradient -->
     <LinearLayout
         android:id="@+id/top_controls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#80000000"
+        android:background="@drawable/gradient_player_overlay_top"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="16dp"
+        android:paddingTop="32dp"
         android:visibility="visible"
         android:elevation="20dp">
 
@@ -171,55 +195,67 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- Bottom Controls with Gradient -->
     <LinearLayout
         android:id="@+id/bottom_controls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:background="#99000000"
+        android:background="@drawable/gradient_player_overlay_bottom"
         android:orientation="vertical"
         android:padding="8dp"
+        android:paddingTop="48dp"
         android:visibility="visible"
         android:elevation="20dp">
 
-        <LinearLayout
+        <!-- Row 1: SeekBar Only -->
+        <SeekBar
+            android:id="@+id/player_seekbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_marginBottom="4dp"
+            android:progressTint="#FFFFFF"
+            android:thumbTint="#FFFFFF"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"/>
+
+        <!-- Row 2: Timestamps below SeekBar -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="18dp"
+            android:layout_marginBottom="8dp">
 
             <TextView
                 android:id="@+id/tv_current_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp" />
-
-            <SeekBar
-                android:id="@+id/player_seekbar"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginHorizontal="8dp"
-                android:progressTint="#FFFFFF"
-                android:thumbTint="#FFFFFF" />
 
             <TextView
                 android:id="@+id/tv_total_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp" />
-        </LinearLayout>
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+        </RelativeLayout>
 
+        <!-- Row 3: Control Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="8dp">
+            android:layout_marginHorizontal="20dp"
+            android:paddingBottom="16dp">
 
             <ImageButton
                 android:id="@+id/player_lock_btn"
@@ -248,10 +284,9 @@
 
             <ImageButton
                 android:id="@+id/player_play_pause_btn"
-                android:layout_width="56dp" android:layout_height="56dp"
+                android:layout_width="56dp" android:layout_height="48dp"
                 android:layout_marginHorizontal="16dp"
                 android:background="@drawable/rounded_background_black_transparent"
-                android:padding="12dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_pausen"
                 app:tint="#FFFFFF" />

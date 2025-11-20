@@ -16,7 +16,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.annotation.OptIn
 import androidx.fragment.app.Fragment
+import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.shubhamgupta.nebula_music.MainActivity
@@ -40,12 +42,20 @@ class VideosFragment : Fragment() {
     private val videoList = mutableListOf<Video>()
     private var filteredVideoList = mutableListOf<Video>()
     private var currentQuery = ""
-    private var currentSortType = MainActivity.SortType.DATE_ADDED_DESC // Default to newest
+    private var currentSortType = MainActivity.SortType.DATE_ADDED_DESC
 
     private val handler = Handler(Looper.getMainLooper())
     private var loadJob: Job? = null
     private var scrollPosition = 0
     private var scrollOffset = 0
+
+    // FIX: Auto-refresh runnable for periodic updates
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            refreshDataPreserveState()
+            handler.postDelayed(this, 10000) // Refresh every 10 seconds
+        }
+    }
 
     private lateinit var videoContentObserver: VideoContentObserver
 
@@ -58,7 +68,6 @@ class VideosFragment : Fragment() {
         }
     }
 
-    // Updated to listen for SORT_VIDEOS specifically
     private val sortReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "SORT_VIDEOS") {
@@ -73,12 +82,9 @@ class VideosFragment : Fragment() {
         }
     }
 
-    // Fix for "New Videos not appearing": Auto-detects changes in MediaStore
     inner class VideoContentObserver(handler: Handler) : ContentObserver(handler) {
         override fun onChange(selfChange: Boolean) {
             super.onChange(selfChange)
-            Log.d("VideosFragment", "External Video Content Changed - Refreshing List")
-            // Delay slightly to allow file write to complete
             handler.postDelayed({ refreshDataPreserveState() }, 1000)
         }
     }
@@ -148,7 +154,7 @@ class VideosFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         val searchFilter = IntentFilter("SEARCH_QUERY_CHANGED")
-        val sortFilter = IntentFilter("SORT_VIDEOS") // Correct filter
+        val sortFilter = IntentFilter("SORT_VIDEOS")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requireActivity().registerReceiver(searchReceiver, searchFilter, Context.RECEIVER_NOT_EXPORTED)
@@ -158,7 +164,6 @@ class VideosFragment : Fragment() {
             requireActivity().registerReceiver(sortReceiver, sortFilter)
         }
 
-        // Register Observer for new videos
         try {
             requireContext().contentResolver.registerContentObserver(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
@@ -169,9 +174,8 @@ class VideosFragment : Fragment() {
             Log.e("VideosFragment", "Error registering content observer", e)
         }
 
-        // FIX: Always load videos on resume to catch new files added while app was backgrounded
-        // This ensures new videos appear even if the list wasn't empty before
-        loadVideos(preserveState = true)
+        // FIX: Start periodic refresh
+        handler.post(refreshRunnable)
     }
 
     override fun onPause() {
@@ -179,7 +183,9 @@ class VideosFragment : Fragment() {
         requireActivity().unregisterReceiver(searchReceiver)
         requireActivity().unregisterReceiver(sortReceiver)
         try { requireContext().contentResolver.unregisterContentObserver(videoContentObserver) } catch (e: Exception) {}
+
         loadJob?.cancel()
+        handler.removeCallbacks(refreshRunnable) // FIX: Stop refresh
         saveScrollState()
     }
 
@@ -231,6 +237,7 @@ class VideosFragment : Fragment() {
         updateAdapter()
     }
 
+    @OptIn(UnstableApi::class)
     private fun updateAdapter() {
         if (!isAdded) return
         val adapter = VideoAdapter(requireContext(), filteredVideoList) { video ->
