@@ -21,37 +21,68 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.widget.NestedScrollView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
+import com.bumptech.glide.Glide
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import com.shubhamgupta.nebula_player.MainActivity
 import com.shubhamgupta.nebula_player.R
 import com.shubhamgupta.nebula_player.adapters.SearchHistoryAdapter
+import com.shubhamgupta.nebula_player.models.Song
+import com.shubhamgupta.nebula_player.repository.SongRepository
 import com.shubhamgupta.nebula_player.utils.SearchHistoryManager
+import com.shubhamgupta.nebula_player.utils.SongUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class SearchFragment : Fragment() {
 
     private lateinit var searchBar: EditText
-    private lateinit var btnBack: ImageButton
     private lateinit var btnVoiceSearch: ImageButton
     private lateinit var historyRecyclerView: RecyclerView
     private lateinit var resultsContainer: View
+    private lateinit var idleContainer: NestedScrollView
+    private lateinit var suggestionsRecyclerView: RecyclerView
+    private lateinit var btnRefreshSuggestions: ImageButton
     private lateinit var historyAdapter: SearchHistoryAdapter
+    private lateinit var searchScopeGroup: ChipGroup
 
     private val handler = Handler(Looper.getMainLooper())
+    private var currentScope = "songs" // 'songs' or 'videos'
 
     // Receiver to sync search bar if search is initiated from Home Page mic
     private val searchUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "SEARCH_QUERY_CHANGED") {
                 val query = intent.getStringExtra("query") ?: return
+                val scope = intent.getStringExtra("scope")
+
+                if (scope != null && scope != currentScope) {
+                    // Update scope if provided
+                    currentScope = scope
+                    if (currentScope == "videos") {
+                        searchScopeGroup.check(R.id.chip_scope_videos)
+                    } else {
+                        searchScopeGroup.check(R.id.chip_scope_songs)
+                    }
+                }
+
                 if (searchBar.text.toString() != query) {
                     searchBar.setText(query)
                     searchBar.setSelection(query.length)
-                    // The TextWatcher will handle showing the results container
                 }
             }
         }
@@ -82,15 +113,13 @@ class SearchFragment : Fragment() {
 
         initializeViews(view)
         setupHistoryRecycler()
-        setupSearchResultsFragment()
+        setupSuggestionsRecycler()
+        setupSearchResultsFragment() // Loads default songs fragment
         setupSearchLogic()
+        setupScopeChips(view)
 
-        // Focus search bar and show keyboard automatically
-        searchBar.requestFocus()
-        handler.postDelayed({
-            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT)
-        }, 200)
+        // Load initial random suggestions
+        loadSuggestions()
     }
 
     override fun onResume() {
@@ -114,18 +143,42 @@ class SearchFragment : Fragment() {
 
     private fun initializeViews(view: View) {
         searchBar = view.findViewById(R.id.search_bar)
-        btnBack = view.findViewById(R.id.btn_back)
         btnVoiceSearch = view.findViewById(R.id.btn_voice_search)
         historyRecyclerView = view.findViewById(R.id.history_recycler_view)
+        suggestionsRecyclerView = view.findViewById(R.id.suggestions_recycler_view)
+        btnRefreshSuggestions = view.findViewById(R.id.btn_refresh_suggestions)
         resultsContainer = view.findViewById(R.id.search_results_container)
-
-        btnBack.setOnClickListener {
-            hideKeyboard()
-            requireActivity().onBackPressedDispatcher.onBackPressed()
-        }
+        idleContainer = view.findViewById(R.id.search_idle_container)
+        searchScopeGroup = view.findViewById(R.id.search_scope_group)
 
         btnVoiceSearch.setOnClickListener {
             startVoiceRecognition()
+        }
+
+        btnRefreshSuggestions.setOnClickListener {
+            loadSuggestions()
+        }
+    }
+
+    private fun setupScopeChips(view: View) {
+        val chipSongs = view.findViewById<Chip>(R.id.chip_scope_songs)
+        val chipVideos = view.findViewById<Chip>(R.id.chip_scope_videos)
+
+        chipSongs.isChecked = true
+
+        searchScopeGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.chip_scope_songs -> {
+                    currentScope = "songs"
+                    setupSearchResultsFragment()
+                    if (searchBar.text.isNotEmpty()) performSearch(searchBar.text.toString())
+                }
+                R.id.chip_scope_videos -> {
+                    currentScope = "videos"
+                    setupSearchResultsFragment()
+                    if (searchBar.text.isNotEmpty()) performSearch(searchBar.text.toString())
+                }
+            }
         }
     }
 
@@ -153,21 +206,58 @@ class SearchFragment : Fragment() {
         updateHistoryVisibility(historyList.size)
     }
 
+    private fun setupSuggestionsRecycler() {
+        suggestionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        suggestionsRecyclerView.isNestedScrollingEnabled = false
+    }
+
+    private fun loadSuggestions() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val allSongs = SongRepository.getAllSongs(requireContext())
+                val randomSongs = allSongs.asSequence().shuffled().take(5).toList()
+
+                withContext(Dispatchers.Main) {
+                    suggestionsRecyclerView.adapter = SuggestionsAdapter(randomSongs) { song ->
+                        val mainActivity = requireActivity() as? MainActivity
+                        mainActivity?.getMusicService()?.startPlayback(arrayListOf(song), 0)
+                        mainActivity?.showNowPlayingPage()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SearchFragment", "Error loading suggestions", e)
+            }
+        }
+    }
+
     private fun updateHistoryVisibility(itemCount: Int) {
         // Only show history if search bar is empty and we have items
         if (itemCount > 0 && searchBar.text.isNullOrEmpty()) {
             historyRecyclerView.visibility = View.VISIBLE
-            resultsContainer.visibility = View.GONE
-        } else if (searchBar.text.isNullOrEmpty()) {
+        } else {
             historyRecyclerView.visibility = View.GONE
+        }
+        updateContainerVisibility()
+    }
+
+    private fun updateContainerVisibility() {
+        if (searchBar.text.isNullOrEmpty()) {
+            // Idle State: Show ScrollView (History + Suggestions), Hide Results
+            idleContainer.visibility = View.VISIBLE
             resultsContainer.visibility = View.GONE
+        } else {
+            // Search State: Hide Idle ScrollView, Show Results
+            idleContainer.visibility = View.GONE
+            resultsContainer.visibility = View.VISIBLE
         }
     }
 
     private fun setupSearchResultsFragment() {
-        // Use SongsFragment for results, but keeping it hidden initially
+        // Switch between SongsFragment and VideosFragment based on selection
+        val fragment = if (currentScope == "videos") VideosFragment() else SongsFragment()
+
         childFragmentManager.commit {
-            replace(R.id.search_results_container, SongsFragment(), "SEARCH_RESULTS")
+            replace(R.id.search_results_container, fragment, "SEARCH_RESULTS")
         }
     }
 
@@ -180,15 +270,12 @@ class SearchFragment : Fragment() {
                 performSearch(query)
 
                 if (query.isEmpty()) {
-                    // Show History, Hide Results
                     val historyCount = SearchHistoryManager.getHistory(requireContext()).size
                     if (historyCount > 0) historyRecyclerView.visibility = View.VISIBLE
-                    resultsContainer.visibility = View.GONE
                 } else {
-                    // Hide History, Show Results
                     historyRecyclerView.visibility = View.GONE
-                    resultsContainer.visibility = View.VISIBLE
                 }
+                updateContainerVisibility()
             }
         })
 
@@ -206,11 +293,20 @@ class SearchFragment : Fragment() {
         }
     }
 
+    // Called from HomePageFragment when double-tapping the Search tab
+    fun focusSearchInput() {
+        if (this::searchBar.isInitialized) {
+            searchBar.requestFocus()
+            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
     private fun startVoiceRecognition() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search song or video")
         }
         try {
             voiceRecognitionLauncher.launch(intent)
@@ -221,21 +317,65 @@ class SearchFragment : Fragment() {
 
     @SuppressLint("UnsafeImplicitIntentLaunch")
     private fun performSearch(query: String) {
-        Log.d("SearchFragment", "Broadcasting search query: $query")
+        Log.d("SearchFragment", "Broadcasting search query: $query for scope: $currentScope")
         val intent = Intent("SEARCH_QUERY_CHANGED").apply {
             putExtra("query", query)
+            putExtra("scope", currentScope) // Pass scope so receiver knows what to filter
         }
         requireActivity().sendBroadcast(intent)
     }
 
     private fun hideKeyboard() {
-        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(searchBar.windowToken, 0)
+        if (this::searchBar.isInitialized) {
+            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(searchBar.windowToken, 0)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         hideKeyboard()
         performSearch("")
+    }
+
+    // Internal Adapter for Suggestions using item_song.xml IDs
+    private inner class SuggestionsAdapter(
+        private val songs: List<Song>,
+        private val onItemClick: (Song) -> Unit
+    ) : RecyclerView.Adapter<SuggestionsAdapter.ViewHolder>() {
+
+        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            // Updated IDs based on item_song.xml
+            val title: TextView = view.findViewById(R.id.item_title)
+            val artist: TextView = view.findViewById(R.id.item_artist)
+            val albumArt: ImageView = view.findViewById(R.id.item_album_art)
+            val options: ImageView = view.findViewById(R.id.item_options)
+
+            init {
+                view.setOnClickListener { onItemClick(songs[bindingAdapterPosition]) }
+            }
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            // Using item_song.xml which is standard for the app
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_song, parent, false)
+            return ViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val song = songs[position]
+            holder.title.text = song.title
+            holder.artist.text = song.artist
+
+            // Hide options menu for suggestions as it's a quick pick list
+            holder.options.visibility = View.GONE
+
+            Glide.with(holder.itemView.context)
+                .load(SongUtils.getAlbumArtUri(song.albumId))
+                .placeholder(R.drawable.default_album_art)
+                .into(holder.albumArt)
+        }
+
+        override fun getItemCount(): Int = songs.size
     }
 }

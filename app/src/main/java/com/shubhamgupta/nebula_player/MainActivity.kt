@@ -20,6 +20,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.RadioButton
@@ -41,6 +42,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import com.shubhamgupta.nebula_player.fragments.AboutFragment
+import com.shubhamgupta.nebula_player.fragments.BrowseFragment
 import com.shubhamgupta.nebula_player.fragments.EqualizerFragment
 import com.shubhamgupta.nebula_player.fragments.FavoritesFragment
 import com.shubhamgupta.nebula_player.fragments.HomePageFragment
@@ -50,6 +52,7 @@ import com.shubhamgupta.nebula_player.fragments.PlaylistsFragment
 import com.shubhamgupta.nebula_player.fragments.RecentFragment
 import com.shubhamgupta.nebula_player.fragments.SearchFragment
 import com.shubhamgupta.nebula_player.fragments.SettingsFragment
+import com.shubhamgupta.nebula_player.fragments.VideosFragment
 import com.shubhamgupta.nebula_player.service.MusicService
 import com.shubhamgupta.nebula_player.utils.PreferenceManager
 import com.shubhamgupta.nebula_player.utils.SongUtils
@@ -70,6 +73,9 @@ class MainActivity : AppCompatActivity() {
     private var currentFragment: String = "home"
     private var isTransitioning = false
 
+    // Flag to control mini player from child fragments
+    private var isMiniPlayerAllowed = true
+
     // Theme related views
     private lateinit var sidebarAppearance: View
     private lateinit var sidebarThemeMode: TextView
@@ -79,7 +85,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var themeLight: RadioButton
     private lateinit var themeDark: RadioButton
 
-    // Permission handling - UPDATED FOR VIDEOS
+    // Permission handling
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO)
     } else {
@@ -377,14 +383,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupMiniPlayerInsets() {
         val miniPlayerContainer = findViewById<View>(R.id.mini_player_container)
-        val baseMarginBottom = (16 * resources.displayMetrics.density).toInt()
-
+        // FIX: Do not add padding here for system insets if we are managing position via margins in HomePageFragment.
+        // This prevents the double-spacing issue (Padding + Margin) which made the player float too high.
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout) { _, insets ->
-            val systemBarInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val params = miniPlayerContainer.layoutParams as FrameLayout.LayoutParams
-            params.bottomMargin = baseMarginBottom + systemBarInsets.bottom
-            miniPlayerContainer.layoutParams = params
+            // We consume the insets but don't apply them as padding to the container
+            // because HomePageFragment calculates the exact margin needed based on BottomNav height.
             insets
+        }
+    }
+
+    // New function to adjust MiniPlayer margin (to sit above BottomNav)
+    fun setMiniPlayerBottomMargin(bottomMarginPx: Int) {
+        val miniPlayerContainer = findViewById<View>(R.id.mini_player_container) ?: return
+        val params = miniPlayerContainer.layoutParams as? ViewGroup.MarginLayoutParams
+        if (params != null) {
+            // Only update if changed to avoid layout trashing
+            if (params.bottomMargin != bottomMarginPx) {
+                params.bottomMargin = bottomMarginPx
+                miniPlayerContainer.layoutParams = params
+                Log.d("MainActivity", "MiniPlayer margin updated to: $bottomMarginPx px")
+            }
         }
     }
 
@@ -412,7 +430,6 @@ class MainActivity : AppCompatActivity() {
         val window = window
         val decorView = window.decorView
 
-        // FIXED: Suppress deprecation warnings for status bar and nav bar colors
         @Suppress("DEPRECATION")
         window.statusBarColor = Color.TRANSPARENT
         @Suppress("DEPRECATION")
@@ -495,7 +512,6 @@ class MainActivity : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.START)
         }
 
-        // Updated: Correctly initialized settings button
         findViewById<TextView>(R.id.sidebar_settings).setOnClickListener {
             showSettingsPage()
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -541,28 +557,8 @@ class MainActivity : AppCompatActivity() {
         drawerLayout = findViewById(R.id.drawer_layout)
     }
 
-    fun setDrawerOpen(isOpen: Boolean) {
-        val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
-        homeFragment?.setDrawerOpen(isOpen)
-    }
-
-    private fun setupDrawerListener() {
-        drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
-            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
-
-            override fun onDrawerOpened(drawerView: View) {
-                addTouchInterceptor()
-                setDrawerOpen(true)
-            }
-
-            override fun onDrawerClosed(drawerView: View) {
-                removeTouchInterceptor()
-                setDrawerOpen(false)
-                themeModeOptions.visibility = View.GONE
-            }
-
-            override fun onDrawerStateChanged(newState: Int) {}
-        })
+    fun openDrawer() {
+        drawerLayout.openDrawer(GravityCompat.START)
     }
 
     fun setDrawerLocked(locked: Boolean) {
@@ -571,6 +567,23 @@ class MainActivity : AppCompatActivity() {
         } else {
             drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
         }
+    }
+
+    private fun setupDrawerListener() {
+        drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
+
+            override fun onDrawerOpened(drawerView: View) {
+                addTouchInterceptor()
+            }
+
+            override fun onDrawerClosed(drawerView: View) {
+                removeTouchInterceptor()
+                themeModeOptions.visibility = View.GONE
+            }
+
+            override fun onDrawerStateChanged(newState: Int) {}
+        })
     }
 
     private fun addTouchInterceptor() {
@@ -600,31 +613,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // NEW: Method to show the Search Page
     fun showSearchPage() {
-        if (currentFragment == "search" || isTransitioning) return
-        isTransitioning = true
-        currentFragment = "search"
+        val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
+        if (homeFragment != null && homeFragment.isVisible) {
+            homeFragment.switchToTab(R.id.nav_search)
+        } else {
+            if (currentFragment == "search" || isTransitioning) return
+            isTransitioning = true
+            currentFragment = "search"
 
-        supportFragmentManager.commit {
-            setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
-            replace(R.id.fragment_container, SearchFragment(), "search_page")
-            setReorderingAllowed(true)
-            addToBackStack("search_page")
+            supportFragmentManager.commit {
+                setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
+                replace(R.id.fragment_container, SearchFragment(), "search_page")
+                setReorderingAllowed(true)
+                addToBackStack("search_page")
+            }
+
+            handler.postDelayed({
+                updateMiniPlayerVisibility()
+                isTransitioning = false
+            }, 300)
         }
-
-        handler.postDelayed({
-            updateMiniPlayerVisibility()
-            isTransitioning = false
-        }, 300)
     }
 
-    // New: Implementation for showing Settings Page
     fun showSettingsPage() {
         if (currentFragment == "settings" || isTransitioning) return
         isTransitioning = true
 
         currentFragment = "settings"
+        setMiniPlayerBottomMargin(0) // Reset margin for full screen pages
 
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -645,6 +662,7 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "equalizer"
+        setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -665,6 +683,7 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "about"
+        setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -706,6 +725,7 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "favorites"
+        setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -726,6 +746,7 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "playlists"
+        setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -746,6 +767,7 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "recent"
+        setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -763,16 +785,26 @@ class MainActivity : AppCompatActivity() {
 
     fun getMusicService(): MusicService? = musicService
 
+    fun setMiniPlayerVisibility(visible: Boolean) {
+        isMiniPlayerAllowed = visible
+        updateMiniPlayerVisibility()
+    }
+
     fun updateMiniPlayerVisibility() {
-        // Updated: Included settings and search in visibility check
+        val miniPlayerContainer = findViewById<View>(R.id.mini_player_container) ?: return
+
+        if (!isMiniPlayerAllowed) {
+            miniPlayerContainer.visibility = View.GONE
+            return
+        }
+
         val shouldBeVisible = currentFragment == "home" || currentFragment == "favorites" ||
                 currentFragment == "playlists" || currentFragment == "recent" ||
                 currentFragment == "equalizer" || currentFragment == "about" ||
                 currentFragment == "settings" || currentFragment == "search"
 
-        Log.d("MainActivity", "updateMiniPlayerVisibility: currentFragment=$currentFragment, shouldBeVisible=$shouldBeVisible")
+        Log.d("MainActivity", "updateMiniPlayerVisibility: currentFragment=$currentFragment, shouldBeVisible=$shouldBeVisible, isMiniPlayerAllowed=$isMiniPlayerAllowed")
 
-        val miniPlayerContainer = findViewById<View>(R.id.mini_player_container)
         if (shouldBeVisible) {
             miniPlayerContainer.visibility = View.VISIBLE
             if (supportFragmentManager.findFragmentById(R.id.mini_player_container) == null) {
@@ -845,15 +877,39 @@ class MainActivity : AppCompatActivity() {
         when {
             supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") != null -> {
                 currentFragment = "home"
+                isMiniPlayerAllowed = true
+                // Let HomePageFragment restore the margin
+                (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.updateMiniPlayerPosition()
                 drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
             }
-            supportFragmentManager.findFragmentByTag("favorites_page") != null -> currentFragment = "favorites"
-            supportFragmentManager.findFragmentByTag("playlists_page") != null -> currentFragment = "playlists"
-            supportFragmentManager.findFragmentByTag("recent_page") != null -> currentFragment = "recent"
-            supportFragmentManager.findFragmentByTag("equalizer_page") != null -> currentFragment = "equalizer"
-            supportFragmentManager.findFragmentByTag("about_page") != null -> currentFragment = "about"
-            supportFragmentManager.findFragmentByTag("settings_page") != null -> currentFragment = "settings"
-            supportFragmentManager.findFragmentByTag("search_page") != null -> currentFragment = "search"
+            supportFragmentManager.findFragmentByTag("favorites_page") != null -> {
+                currentFragment = "favorites"
+                setMiniPlayerBottomMargin(0)
+            }
+            supportFragmentManager.findFragmentByTag("playlists_page") != null -> {
+                currentFragment = "playlists"
+                setMiniPlayerBottomMargin(0)
+            }
+            supportFragmentManager.findFragmentByTag("recent_page") != null -> {
+                currentFragment = "recent"
+                setMiniPlayerBottomMargin(0)
+            }
+            supportFragmentManager.findFragmentByTag("equalizer_page") != null -> {
+                currentFragment = "equalizer"
+                setMiniPlayerBottomMargin(0)
+            }
+            supportFragmentManager.findFragmentByTag("about_page") != null -> {
+                currentFragment = "about"
+                setMiniPlayerBottomMargin(0)
+            }
+            supportFragmentManager.findFragmentByTag("settings_page") != null -> {
+                currentFragment = "settings"
+                setMiniPlayerBottomMargin(0)
+            }
+            supportFragmentManager.findFragmentByTag("search_page") != null -> {
+                currentFragment = "search"
+                // Assuming search page might overlap too if opened directly, but usually full screen
+            }
             supportFragmentManager.findFragmentByTag("NOW_PLAYING_FRAGMENT") != null -> currentFragment = "now_playing"
             else -> {
                 currentFragment = "home"
