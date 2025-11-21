@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nebula Music</string>
+    <string name="app_name">Nebula Player</string>
     <string name="album_art" />
     <string name="favorite" />
     <string name="previous" />

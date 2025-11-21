@@ -32,7 +32,7 @@
         android:id="@+id/sidebar_app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Nebula Music"
+        android:text="Nebula Player"
         android:textColor="@android:color/white"
         android:textSize="18sp"
         android:textStyle="bold"

@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.shubhamgupta.nebula_music"
+    namespace = "com.shubhamgupta.nebula_player"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.shubhamgupta.nebula_music"
+        applicationId = "com.shubhamgupta.nebula_player"
         minSdk = 30
         targetSdk = 36
         versionCode = 1
