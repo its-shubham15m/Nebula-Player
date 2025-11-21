@@ -81,12 +81,16 @@ class HomePageFragment : Fragment() {
                 TAG_VIDEO -> R.id.nav_video
                 TAG_SEARCH -> R.id.nav_search
                 TAG_BROWSE -> R.id.nav_browse
-                else -> R.id.nav_audio
+                TAG_AUDIO -> R.id.nav_audio
+                else -> bottomNavigationView.selectedItemId // Keep current if it's a sub-fragment like Favorites
             }
 
             if (bottomNavigationView.selectedItemId != targetTabId) {
                 bottomNavigationView.selectedItemId = targetTabId
-            } else {
+            }
+            // If it's one of the main tabs, make sure it's active
+            if (targetTabId == R.id.nav_audio || targetTabId == R.id.nav_video ||
+                targetTabId == R.id.nav_search || targetTabId == R.id.nav_browse) {
                 handleTabSelection(targetTabId)
             }
         } else {
@@ -98,6 +102,11 @@ class HomePageFragment : Fragment() {
 
     // Extracted logic
     private fun handleTabSelection(itemId: Int) {
+        // Clear backstack if switching main tabs to avoid stack buildup
+        if (childFragmentManager.backStackEntryCount > 0) {
+            childFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        }
+
         when (itemId) {
             R.id.nav_audio -> {
                 switchFragment(TAG_AUDIO) { MusicPageFragment.newInstance() }
@@ -127,34 +136,37 @@ class HomePageFragment : Fragment() {
     fun navigateToFavorites() {
         childFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right)
-            add(R.id.home_content_container, FavoritesFragment())
+            // Use replace instead of add to keep hierarchy clean, but AddToBackStack allows return
+            replace(R.id.home_content_container, FavoritesFragment(), "favorites")
             addToBackStack("favorites")
         }
+        updateMiniPlayerPosition()
     }
 
     fun navigateToPlaylists() {
         childFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right)
-            add(R.id.home_content_container, PlaylistsFragment())
+            replace(R.id.home_content_container, PlaylistsFragment(), "playlists")
             addToBackStack("playlists")
         }
+        updateMiniPlayerPosition()
     }
 
     fun navigateToRecents() {
         childFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right)
-            add(R.id.home_content_container, RecentFragment())
+            replace(R.id.home_content_container, RecentFragment(), "recents")
             addToBackStack("recents")
         }
+        updateMiniPlayerPosition()
     }
 
     private fun switchFragment(tag: String, createFragment: () -> Fragment) {
         val transaction = childFragmentManager.beginTransaction()
 
+        // Hide current active fragment
         activeFragment?.let {
-            if (it.tag != tag) {
-                transaction.hide(it)
-            }
+            transaction.hide(it)
         }
 
         var targetFragment = childFragmentManager.findFragmentByTag(tag)
@@ -178,11 +190,40 @@ class HomePageFragment : Fragment() {
             val height = bottomNavigationView.height
             if (height > 0) {
                 val offsetPx = (4 * resources.displayMetrics.density).toInt()
+                // Ensure we account for the bottom nav height plus a small margin
                 (requireActivity() as? MainActivity)?.setMiniPlayerBottomMargin(height + offsetPx)
+            } else {
+                // Fallback if height is 0 (layout not ready)
+                bottomNavigationView.post {
+                    val h = bottomNavigationView.height
+                    val offsetPx = (4 * resources.displayMetrics.density).toInt()
+                    (requireActivity() as? MainActivity)?.setMiniPlayerBottomMargin(h + offsetPx)
+                }
             }
         } else {
             (requireActivity() as? MainActivity)?.setMiniPlayerBottomMargin(0)
         }
+    }
+
+    // New Method to handle back press from MainActivity
+    fun handleBackPress(): Boolean {
+        if (childFragmentManager.backStackEntryCount > 0) {
+            childFragmentManager.popBackStack()
+
+            childFragmentManager.addOnBackStackChangedListener(object : androidx.fragment.app.FragmentManager.OnBackStackChangedListener {
+                override fun onBackStackChanged() {
+                    if (childFragmentManager.backStackEntryCount == 0) {
+                        // We are back at root. Ensure the selected tab fragment is visible.
+                        val currentTabId = bottomNavigationView.selectedItemId
+                        handleTabSelection(currentTabId)
+                    }
+                    childFragmentManager.removeOnBackStackChangedListener(this)
+                }
+            })
+
+            return true
+        }
+        return false
     }
 
     override fun onResume() {
@@ -204,6 +245,12 @@ class HomePageFragment : Fragment() {
         if (activeFragment is MusicPageFragment) {
             activeFragment.refreshData()
         } else if (activeFragment is VideosFragment) {
+            activeFragment.refreshData()
+        } else if (activeFragment is FavoritesFragment) {
+            activeFragment.refreshData()
+        } else if (activeFragment is PlaylistsFragment) {
+            activeFragment.refreshData()
+        } else if (activeFragment is RecentFragment) {
             activeFragment.refreshData()
         }
     }

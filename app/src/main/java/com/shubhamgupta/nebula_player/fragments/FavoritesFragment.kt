@@ -15,7 +15,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog // Use AppCompat AlertDialog
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -32,56 +32,69 @@ class FavoritesFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var tvEmpty: TextView
     private lateinit var btnBack: ImageButton
-    // private lateinit var btnCreatePlaylist: Button // Removed if not used
     private var musicService: MusicService? = null
     private val favoriteSongs = mutableListOf<Song>()
-    private lateinit var adapter: SongAdapter // Keep adapter reference
+    private lateinit var adapter: SongAdapter
 
     // Delete request launcher
     private lateinit var deleteResultLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Initialize delete launcher
         deleteResultLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 Toast.makeText(requireContext(), "Song deleted successfully", Toast.LENGTH_SHORT).show()
-                refreshData() // Reload data after deletion
+                refreshData()
             } else {
                 Toast.makeText(requireContext(), "Song could not be deleted", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    override fun onCreateView( // Mostly unchanged
+    override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_favorites, container, false)
         initializeViews(view)
         musicService = (requireActivity() as MainActivity).getMusicService()
-        loadFavorites() // Load initial data
+        loadFavorites()
         return view
     }
 
-    override fun onResume() { // Unchanged
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // Add padding to the bottom of RecyclerView so the last item is not hidden behind
+        // the MiniPlayer and Bottom Navigation
+        val bottomPadding = (140 * resources.displayMetrics.density).toInt() // Approx 140dp
+        recyclerView.clipToPadding = false
+        recyclerView.setPadding(0, 0, 0, bottomPadding)
+    }
+
+    override fun onResume() {
         super.onResume()
         (requireActivity() as MainActivity).setDrawerLocked(true)
         loadFavorites()
     }
 
-    override fun onPause() { // Unchanged
+    override fun onPause() {
         super.onPause()
         (requireActivity() as MainActivity).setDrawerLocked(false)
     }
 
-    private fun initializeViews(view: View) { // Unchanged
+    private fun initializeViews(view: View) {
         recyclerView = view.findViewById(R.id.recycler_view_fav)
         tvEmpty = view.findViewById(R.id.tv_empty_fav)
         btnBack = view.findViewById(R.id.btn_back)
         val shuffleCard = view.findViewById<com.google.android.material.card.MaterialCardView>(R.id.shuffle_all_card)
 
         btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            // Check if we are inside HomePageFragment and pop its stack
+            val parent = parentFragment
+            if (parent is HomePageFragment) {
+                parent.childFragmentManager.popBackStack()
+            } else {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
         }
         shuffleCard.setOnClickListener {
             shuffleFavorites()
@@ -94,7 +107,7 @@ class FavoritesFragment : Fragment() {
         }
     }
 
-    private fun loadFavorites() { // Unchanged
+    private fun loadFavorites() {
         val favoriteIds = PreferenceManager.getFavorites(requireContext())
         val allSongs = SongRepository.getAllSongs(requireContext())
         favoriteSongs.clear()
@@ -109,13 +122,12 @@ class FavoritesFragment : Fragment() {
             tvEmpty.visibility = View.GONE
             view?.findViewById<com.google.android.material.card.MaterialCardView>(R.id.shuffle_all_card)?.visibility = View.VISIBLE
         }
-        setupRecyclerView() // Call setup after loading data
+        setupRecyclerView()
     }
 
-    // UPDATED: Correct adapter call
     private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(context)
-        adapter = SongAdapter( // Assign to class member
+        adapter = SongAdapter(
             context = requireContext(),
             songs = favoriteSongs,
             onItemClick = { position -> playSong(position) },
@@ -125,7 +137,6 @@ class FavoritesFragment : Fragment() {
         recyclerView.adapter = adapter
     }
 
-    // NEW: Handles delete request
     private fun requestDeleteSong(song: Song) {
         try {
             val intentSender = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -161,7 +172,7 @@ class FavoritesFragment : Fragment() {
         }
     }
 
-    private fun playSong(position: Int) { // Unchanged
+    private fun playSong(position: Int) {
         if (position < 0 || position >= favoriteSongs.size) return
         val songToPlay = favoriteSongs[position]
         PreferenceManager.addRecentSong(requireContext(), songToPlay.id)
@@ -169,7 +180,7 @@ class FavoritesFragment : Fragment() {
         (requireActivity() as MainActivity).navigateToNowPlaying()
     }
 
-    private fun shuffleFavorites() { // Unchanged
+    private fun shuffleFavorites() {
         if (favoriteSongs.isNotEmpty()) {
             val shuffledSongs = favoriteSongs.shuffled()
             musicService?.startPlayback(ArrayList(shuffledSongs), 0)
@@ -181,7 +192,7 @@ class FavoritesFragment : Fragment() {
         }
     }
 
-    private fun showSortDialog() { // Unchanged
+    private fun showSortDialog() {
         val items = arrayOf("Name (A-Z)", "Name (Z-A)", "Date Added (Newest)", "Date Added (Oldest)")
         AlertDialog.Builder(requireContext())
             .setTitle("Sort by")
@@ -196,25 +207,25 @@ class FavoritesFragment : Fragment() {
             .show()
     }
 
-    private fun sortFavoritesByName(ascending: Boolean) { // Unchanged
-        favoriteSongs.sortBy { it.title.lowercase() } // Sort by lowercase for consistency
+    private fun sortFavoritesByName(ascending: Boolean) {
+        favoriteSongs.sortBy { it.title.lowercase() }
         if (!ascending) favoriteSongs.reverse()
-        adapter.notifyDataSetChanged() // Use the class member adapter
+        adapter.notifyDataSetChanged()
         showToast("Sorted by name ${if (ascending) "A-Z" else "Z-A"}")
     }
 
-    private fun sortFavoritesByDate(descending: Boolean) { // Unchanged
+    private fun sortFavoritesByDate(descending: Boolean) {
         favoriteSongs.sortBy { it.dateAdded }
         if (descending) favoriteSongs.reverse()
-        adapter.notifyDataSetChanged() // Use the class member adapter
+        adapter.notifyDataSetChanged()
         showToast("Sorted by date ${if (descending) "newest first" else "oldest first"}")
     }
 
-    private fun showToast(message: String) { // Unchanged
+    private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
-    fun refreshData() { // Unchanged
+    fun refreshData() {
         loadFavorites()
     }
 }

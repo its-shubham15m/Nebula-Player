@@ -42,17 +42,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import com.shubhamgupta.nebula_player.fragments.AboutFragment
-import com.shubhamgupta.nebula_player.fragments.BrowseFragment
 import com.shubhamgupta.nebula_player.fragments.EqualizerFragment
-import com.shubhamgupta.nebula_player.fragments.FavoritesFragment
 import com.shubhamgupta.nebula_player.fragments.HomePageFragment
 import com.shubhamgupta.nebula_player.fragments.MiniPlayerFragment
 import com.shubhamgupta.nebula_player.fragments.NowPlayingFragment
-import com.shubhamgupta.nebula_player.fragments.PlaylistsFragment
-import com.shubhamgupta.nebula_player.fragments.RecentFragment
 import com.shubhamgupta.nebula_player.fragments.SearchFragment
 import com.shubhamgupta.nebula_player.fragments.SettingsFragment
-import com.shubhamgupta.nebula_player.fragments.VideosFragment
 import com.shubhamgupta.nebula_player.service.MusicService
 import com.shubhamgupta.nebula_player.utils.PreferenceManager
 import com.shubhamgupta.nebula_player.utils.SongUtils
@@ -383,21 +378,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupMiniPlayerInsets() {
         val miniPlayerContainer = findViewById<View>(R.id.mini_player_container)
-        // FIX: Do not add padding here for system insets if we are managing position via margins in HomePageFragment.
-        // This prevents the double-spacing issue (Padding + Margin) which made the player float too high.
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout) { _, insets ->
-            // We consume the insets but don't apply them as padding to the container
-            // because HomePageFragment calculates the exact margin needed based on BottomNav height.
             insets
         }
     }
 
-    // New function to adjust MiniPlayer margin (to sit above BottomNav)
     fun setMiniPlayerBottomMargin(bottomMarginPx: Int) {
         val miniPlayerContainer = findViewById<View>(R.id.mini_player_container) ?: return
         val params = miniPlayerContainer.layoutParams as? ViewGroup.MarginLayoutParams
         if (params != null) {
-            // Only update if changed to avoid layout trashing
             if (params.bottomMargin != bottomMarginPx) {
                 params.bottomMargin = bottomMarginPx
                 miniPlayerContainer.layoutParams = params
@@ -641,7 +630,9 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "settings"
-        setMiniPlayerBottomMargin(0) // Reset margin for full screen pages
+        // Hide mini player for Settings
+        isMiniPlayerAllowed = false
+        setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -662,6 +653,8 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "equalizer"
+        // Hide mini player for Equalizer
+        isMiniPlayerAllowed = false
         setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
@@ -683,6 +676,8 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "about"
+        // Hide mini player for About
+        isMiniPlayerAllowed = false
         setMiniPlayerBottomMargin(0)
 
         supportFragmentManager.commit {
@@ -704,6 +699,7 @@ class MainActivity : AppCompatActivity() {
         isTransitioning = true
 
         currentFragment = "home"
+        isMiniPlayerAllowed = true
 
         val homeFragment = fragmentCache["home"] as? HomePageFragment ?: HomePageFragment.newInstance()
 
@@ -720,67 +716,50 @@ class MainActivity : AppCompatActivity() {
         }, 300)
     }
 
+    // UPDATED: Navigation now delegates to HomePageFragment to keep BottomNav visible
     fun showFavoritesPage() {
-        if (currentFragment == "favorites" || isTransitioning) return
-        isTransitioning = true
+        val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
 
-        currentFragment = "favorites"
-        setMiniPlayerBottomMargin(0)
-
-        supportFragmentManager.commit {
-            setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
-            replace(R.id.fragment_container, FavoritesFragment(), "favorites_page")
-            setReorderingAllowed(true)
-            addToBackStack("favorites_page")
+        if (homeFragment != null && homeFragment.isVisible) {
+            homeFragment.navigateToFavorites()
+        } else {
+            // If home is not current, go to home first then nav
+            showHomePageFragment()
+            handler.postDelayed({
+                (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.navigateToFavorites()
+            }, 100)
         }
         drawerLayout.closeDrawer(GravityCompat.START)
-
-        handler.postDelayed({
-            updateMiniPlayerVisibility()
-            isTransitioning = false
-        }, 300)
     }
 
+    // UPDATED: Navigation now delegates to HomePageFragment
     fun showPlaylistsPage() {
-        if (currentFragment == "playlists" || isTransitioning) return
-        isTransitioning = true
+        val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
 
-        currentFragment = "playlists"
-        setMiniPlayerBottomMargin(0)
-
-        supportFragmentManager.commit {
-            setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
-            replace(R.id.fragment_container, PlaylistsFragment(), "playlists_page")
-            setReorderingAllowed(true)
-            addToBackStack("playlists_page")
+        if (homeFragment != null && homeFragment.isVisible) {
+            homeFragment.navigateToPlaylists()
+        } else {
+            showHomePageFragment()
+            handler.postDelayed({
+                (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.navigateToPlaylists()
+            }, 100)
         }
         drawerLayout.closeDrawer(GravityCompat.START)
-
-        handler.postDelayed({
-            updateMiniPlayerVisibility()
-            isTransitioning = false
-        }, 300)
     }
 
+    // UPDATED: Navigation now delegates to HomePageFragment
     fun showRecentPage() {
-        if (currentFragment == "recent" || isTransitioning) return
-        isTransitioning = true
+        val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
 
-        currentFragment = "recent"
-        setMiniPlayerBottomMargin(0)
-
-        supportFragmentManager.commit {
-            setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
-            replace(R.id.fragment_container, RecentFragment(), "recent_page")
-            setReorderingAllowed(true)
-            addToBackStack("recent_page")
+        if (homeFragment != null && homeFragment.isVisible) {
+            homeFragment.navigateToRecents()
+        } else {
+            showHomePageFragment()
+            handler.postDelayed({
+                (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.navigateToRecents()
+            }, 100)
         }
         drawerLayout.closeDrawer(GravityCompat.START)
-
-        handler.postDelayed({
-            updateMiniPlayerVisibility()
-            isTransitioning = false
-        }, 300)
     }
 
     fun getMusicService(): MusicService? = musicService
@@ -798,12 +777,15 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val shouldBeVisible = currentFragment == "home" || currentFragment == "favorites" ||
-                currentFragment == "playlists" || currentFragment == "recent" ||
-                currentFragment == "equalizer" || currentFragment == "about" ||
-                currentFragment == "settings" || currentFragment == "search"
+        // Explicitly checking against fragments where we DON'T want it
+        val isSettingsOrAboutOrEqualizer = currentFragment == "settings" ||
+                currentFragment == "about" ||
+                currentFragment == "equalizer"
 
-        Log.d("MainActivity", "updateMiniPlayerVisibility: currentFragment=$currentFragment, shouldBeVisible=$shouldBeVisible, isMiniPlayerAllowed=$isMiniPlayerAllowed")
+        // We want it visible on Home, NowPlaying (handled differently), and when browsing via Home
+        val shouldBeVisible = !isSettingsOrAboutOrEqualizer && currentFragment != "now_playing"
+
+        Log.d("MainActivity", "updateMiniPlayerVisibility: currentFragment=$currentFragment, shouldBeVisible=$shouldBeVisible")
 
         if (shouldBeVisible) {
             miniPlayerContainer.visibility = View.VISIBLE
@@ -812,6 +794,11 @@ class MainActivity : AppCompatActivity() {
                     replace(R.id.mini_player_container, MiniPlayerFragment.newInstance(), "MINI_PLAYER_TAG")
                     setReorderingAllowed(true)
                 }
+            }
+            // Ensure margin is correct if we are on Home (handled by HomeFragment usually, but good to check)
+            val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
+            if (homeFragment != null && homeFragment.isVisible) {
+                homeFragment.updateMiniPlayerPosition()
             }
         } else {
             miniPlayerContainer.visibility = View.GONE
@@ -825,6 +812,9 @@ class MainActivity : AppCompatActivity() {
         currentFragment = "now_playing"
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
 
+        // Temporarily hide mini player for full screen player
+        setMiniPlayerVisibility(false)
+
         supportFragmentManager.commit {
             setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
             replace(R.id.fragment_container, NowPlayingFragment.newInstance(), "NOW_PLAYING_FRAGMENT")
@@ -833,7 +823,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         handler.postDelayed({
-            updateMiniPlayerVisibility()
             isTransitioning = false
         }, 300)
     }
@@ -852,16 +841,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // UPDATED: Handle Back Press to work with HomePageFragment internal stack
     private fun handleBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
             return
         }
 
+        val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
+        if (homeFragment != null && homeFragment.isVisible && homeFragment.handleBackPress()) {
+            // HomePageFragment handled the back press (popped a child fragment)
+            return
+        }
+
         if (supportFragmentManager.backStackEntryCount > 0) {
             supportFragmentManager.popBackStack()
             updateCurrentFragmentAfterBackPress()
-            updateMiniPlayerVisibility()
         } else {
             if (backPressCount == 1) {
                 finish()
@@ -874,49 +869,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCurrentFragmentAfterBackPress() {
-        when {
-            supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") != null -> {
-                currentFragment = "home"
-                isMiniPlayerAllowed = true
-                // Let HomePageFragment restore the margin
-                (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.updateMiniPlayerPosition()
-                drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+        // Short delay to allow fragment transaction to settle
+        handler.postDelayed({
+            when {
+                supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT")?.isVisible == true -> {
+                    currentFragment = "home"
+                    isMiniPlayerAllowed = true
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+                    (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.updateMiniPlayerPosition()
+                }
+                supportFragmentManager.findFragmentByTag("settings_page")?.isVisible == true -> {
+                    currentFragment = "settings"
+                    isMiniPlayerAllowed = false
+                }
+                supportFragmentManager.findFragmentByTag("about_page")?.isVisible == true -> {
+                    currentFragment = "about"
+                    isMiniPlayerAllowed = false
+                }
+                supportFragmentManager.findFragmentByTag("equalizer_page")?.isVisible == true -> {
+                    currentFragment = "equalizer"
+                    isMiniPlayerAllowed = false
+                }
+                supportFragmentManager.findFragmentByTag("NOW_PLAYING_FRAGMENT")?.isVisible == true -> {
+                    currentFragment = "now_playing"
+                    isMiniPlayerAllowed = false
+                }
+                else -> {
+                    // Default to home if unsure
+                    currentFragment = "home"
+                    isMiniPlayerAllowed = true
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+                }
             }
-            supportFragmentManager.findFragmentByTag("favorites_page") != null -> {
-                currentFragment = "favorites"
-                setMiniPlayerBottomMargin(0)
-            }
-            supportFragmentManager.findFragmentByTag("playlists_page") != null -> {
-                currentFragment = "playlists"
-                setMiniPlayerBottomMargin(0)
-            }
-            supportFragmentManager.findFragmentByTag("recent_page") != null -> {
-                currentFragment = "recent"
-                setMiniPlayerBottomMargin(0)
-            }
-            supportFragmentManager.findFragmentByTag("equalizer_page") != null -> {
-                currentFragment = "equalizer"
-                setMiniPlayerBottomMargin(0)
-            }
-            supportFragmentManager.findFragmentByTag("about_page") != null -> {
-                currentFragment = "about"
-                setMiniPlayerBottomMargin(0)
-            }
-            supportFragmentManager.findFragmentByTag("settings_page") != null -> {
-                currentFragment = "settings"
-                setMiniPlayerBottomMargin(0)
-            }
-            supportFragmentManager.findFragmentByTag("search_page") != null -> {
-                currentFragment = "search"
-                // Assuming search page might overlap too if opened directly, but usually full screen
-            }
-            supportFragmentManager.findFragmentByTag("NOW_PLAYING_FRAGMENT") != null -> currentFragment = "now_playing"
-            else -> {
-                currentFragment = "home"
-                drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
-            }
-        }
-        Log.d("MainActivity", "Updated current fragment to: $currentFragment")
+            updateMiniPlayerVisibility()
+        }, 100)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -950,12 +936,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun forceRefreshCurrentFragment() {
-        when (currentFragment) {
-            "home" -> (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.refreshData()
-            "favorites" -> (supportFragmentManager.findFragmentByTag("favorites_page") as? FavoritesFragment)?.refreshData()
-            "playlists" -> (supportFragmentManager.findFragmentByTag("playlists_page") as? PlaylistsFragment)?.refreshData()
-            "recent" -> (supportFragmentManager.findFragmentByTag("recent_page") as? RecentFragment)?.refreshData()
-        }
+        // Trigger refresh on the home page active fragment
+        val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
+        homeFragment?.refreshData()
     }
 
     @SuppressLint("UnsafeImplicitIntentLaunch")

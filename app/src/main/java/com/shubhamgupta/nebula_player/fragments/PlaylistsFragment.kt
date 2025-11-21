@@ -42,16 +42,22 @@ class PlaylistsFragment : Fragment() {
         return view
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // Add padding for MiniPlayer and BottomNav
+        val bottomPadding = (140 * resources.displayMetrics.density).toInt()
+        recyclerView.clipToPadding = false
+        recyclerView.setPadding(0, 0, 0, bottomPadding)
+    }
+
     override fun onResume() {
         super.onResume()
-        // Lock drawer when fragment is visible
         (requireActivity() as MainActivity).setDrawerLocked(true)
         loadPlaylists()
     }
 
     override fun onPause() {
         super.onPause()
-        // Unlock drawer when leaving fragment
         (requireActivity() as MainActivity).setDrawerLocked(false)
     }
 
@@ -64,7 +70,12 @@ class PlaylistsFragment : Fragment() {
         val shuffleCard = view.findViewById<com.google.android.material.card.MaterialCardView>(R.id.shuffle_all_card)
 
         btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            val parent = parentFragment
+            if (parent is HomePageFragment) {
+                parent.childFragmentManager.popBackStack()
+            } else {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
         }
 
         shuffleCard.setOnClickListener {
@@ -100,11 +111,9 @@ class PlaylistsFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        // Use GridLayoutManager with 2 columns
         recyclerView.layoutManager = GridLayoutManager(context, 2)
         adapter = PlaylistAdapter(playlists,
             onItemClick = { position ->
-                // Open playlist songs page instead of playing directly
                 openPlaylistSongs(position)
             },
             onMenuClick = { pos, menuItem ->
@@ -117,36 +126,42 @@ class PlaylistsFragment : Fragment() {
         recyclerView.adapter = adapter
     }
 
-    // Add this method to PlaylistsFragment
     private fun openPlaylistSongs(position: Int) {
         val playlist = playlists[position]
         val fragment = PlaylistSongsFragment.newInstance(playlist)
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .addToBackStack("playlist_songs")
-            .commit()
+
+        // Check if we are inside HomePageFragment
+        val parent = parentFragment
+        if (parent is HomePageFragment) {
+            parent.childFragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right)
+                .replace(R.id.home_content_container, fragment)
+                .addToBackStack("playlist_songs")
+                .commit()
+            parent.updateMiniPlayerPosition()
+        } else {
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack("playlist_songs")
+                .commit()
+        }
     }
 
     private fun getPlaylistAlbumArt(playlist: Playlist): Any? {
         if (playlist.songIds.isEmpty()) {
             return R.drawable.default_album_art
         }
-
-        // Get the first song in the playlist for album art
         val firstSongId = playlist.songIds.first()
         val allSongs = SongRepository.getAllSongs(requireContext())
         val firstSong = allSongs.firstOrNull { it.id == firstSongId }
 
         return if (firstSong != null) {
             if (firstSong.embeddedArtBytes != null) {
-                // Return embedded art bytes
                 firstSong.embeddedArtBytes
             } else {
-                // Return album art URI
                 SongUtils.getAlbumArtUri(firstSong.albumId)
             }
         } else {
-            // Return default album art resource
             R.drawable.default_album_art
         }
     }
@@ -164,20 +179,15 @@ class PlaylistsFragment : Fragment() {
         try {
             val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_create_playlist, null)
             val input = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_playlist_name)
-
-            // Set dialog background
             dialogView.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.dialog_background))
 
             val dialog = AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
                 .setTitle("Create New Playlist")
                 .setView(dialogView)
                 .setPositiveButton("CREATE", null)
-                .setNegativeButton("CANCEL") { dialog, _ ->
-                    dialog.dismiss()
-                }
+                .setNegativeButton("CANCEL") { dialog, _ -> dialog.dismiss() }
                 .create()
 
-            // Apply theme fixes
             applyDialogThemeFix(dialog)
 
             dialog.setOnShowListener {
@@ -189,12 +199,10 @@ class PlaylistsFragment : Fragment() {
                             input.error = "Playlist name cannot be empty"
                             return@setOnClickListener
                         }
-
                         if (playlists.any { it.name.equals(name, ignoreCase = true) }) {
                             input.error = "Playlist with this name already exists"
                             return@setOnClickListener
                         }
-
                         val newPlaylist = Playlist(
                             id = System.currentTimeMillis(),
                             name = name,
@@ -206,8 +214,6 @@ class PlaylistsFragment : Fragment() {
                         loadPlaylists()
                         showToast("Playlist '$name' created")
                         dialog.dismiss()
-
-                        // Automatically show add songs dialog for the new playlist
                         val newPosition = playlists.indexOfFirst { it.id == newPlaylist.id }
                         if (newPosition != -1) {
                             showAddSongsToPlaylistDialog(newPosition, true)
@@ -217,11 +223,8 @@ class PlaylistsFragment : Fragment() {
                         showToast("Error creating playlist")
                     }
                 }
-
-                // Set button colors
                 setDialogButtonColors(dialog)
             }
-
             dialog.show()
         } catch (e: Exception) {
             Log.e("PlaylistsFragment", "Error showing create playlist dialog", e)
@@ -235,20 +238,15 @@ class PlaylistsFragment : Fragment() {
         val input = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_playlist_name)
         input.setText(playlist.name)
         input.setSelection(playlist.name.length)
-
-        // Set dialog background
         dialogView.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.dialog_background))
 
         val dialog = AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
             .setTitle("Rename Playlist")
             .setView(dialogView)
             .setPositiveButton("RENAME", null)
-            .setNegativeButton("CANCEL") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setNegativeButton("CANCEL") { dialog, _ -> dialog.dismiss() }
             .create()
 
-        // Apply theme fixes
         applyDialogThemeFix(dialog)
 
         dialog.setOnShowListener {
@@ -259,29 +257,23 @@ class PlaylistsFragment : Fragment() {
                     input.error = "Playlist name cannot be empty"
                     return@setOnClickListener
                 }
-
                 if (playlists.any { it != playlist && it.name.equals(newName, ignoreCase = true) }) {
                     input.error = "Playlist with this name already exists"
                     return@setOnClickListener
                 }
-
                 playlist.name = newName
                 PreferenceManager.savePlaylists(requireContext(), playlists)
                 loadPlaylists()
                 showToast("Playlist renamed")
                 dialog.dismiss()
             }
-
-            // Set button colors
             setDialogButtonColors(dialog)
         }
-
         dialog.show()
     }
 
     private fun deletePlaylist(position: Int) {
         val playlist = playlists[position]
-
         val dialog = AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
             .setTitle("Delete Playlist")
             .setMessage("Are you sure you want to delete '${playlist.name}'?")
@@ -292,32 +284,22 @@ class PlaylistsFragment : Fragment() {
                 showToast("Playlist deleted")
                 dialog.dismiss()
             }
-            .setNegativeButton("CANCEL") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setNegativeButton("CANCEL") { dialog, _ -> dialog.dismiss() }
             .create()
 
-        // Apply theme fixes
         applyDialogThemeFix(dialog)
-
         dialog.setOnShowListener {
-            // Set button colors
             dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(ContextCompat.getColor(requireContext(), R.color.error_red))
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(ContextCompat.getColor(requireContext(), R.color.button_negative))
         }
-
         dialog.show()
     }
 
     private fun applyDialogThemeFix(dialog: AlertDialog) {
-        // Ensure proper theming for dark mode
         val titleTextView = dialog.findViewById<TextView>(android.R.id.title)
         val messageTextView = dialog.findViewById<TextView>(android.R.id.message)
-
         titleTextView?.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary))
         messageTextView?.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
-
-        // Set dialog window background
         dialog.window?.setBackgroundDrawableResource(R.color.dialog_background)
     }
 
@@ -328,7 +310,6 @@ class PlaylistsFragment : Fragment() {
 
     private fun showAddSongsToPlaylistDialog(position: Int, isNewPlaylist: Boolean = false) {
         val playlist = playlists[position]
-
         val allSongs = SongRepository.getAllSongs(requireContext())
         val currentPlaylistSongIds = playlist.songIds.toSet()
 
@@ -340,13 +321,12 @@ class PlaylistsFragment : Fragment() {
         val totalSongs = dialogView.findViewById<TextView>(R.id.total_songs)
         val selectAllButton = dialogView.findViewById<Button>(R.id.btn_select_all)
         val submitButton = dialogView.findViewById<Button>(R.id.btn_submit)
-        val cancelButton = dialogView.findViewById<Button>(R.id.btn_cancel) // Find new CANCEL button
+        val cancelButton = dialogView.findViewById<Button>(R.id.btn_cancel)
 
         tvTitle.text = "Add songs to '${playlist.name}'"
         totalSongs.text = "Total songs: ${allSongs.size}"
 
         lateinit var songAdapter: SongSelectionAdapter
-
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         songAdapter = SongSelectionAdapter(
             songs = allSongs,
@@ -356,7 +336,6 @@ class PlaylistsFragment : Fragment() {
             }
         )
         recyclerView.adapter = songAdapter
-
         updateSelectedCount(songAdapter, selectedCount)
 
         searchBar.addTextChangedListener(object : android.text.TextWatcher {
@@ -376,25 +355,18 @@ class PlaylistsFragment : Fragment() {
 
         val dialog = AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
             .setView(dialogView)
-            // REMOVED .setNegativeButton("CANCEL", ...)
             .create()
 
-        // Apply theme fixes
         applyDialogThemeFix(dialog)
-
-        // Style buttons
         selectAllButton.setTextColor(ContextCompat.getColor(requireContext(), R.color.button_positive))
         submitButton.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white))
 
-        // Handle submit button click
         submitButton.setOnClickListener {
             val selectedSongs = songAdapter.getSelectedSongs()
             if (selectedSongs.isNotEmpty()) {
                 addSongsToPlaylist(position, selectedSongs)
                 showToast("Added ${selectedSongs.size} songs to '${playlist.name}'")
                 dialog.dismiss()
-
-                // Show the dialog again for adding more songs if it's not a new playlist
                 if (!isNewPlaylist) {
                     showAddSongsToPlaylistDialog(position, false)
                 }
@@ -403,10 +375,8 @@ class PlaylistsFragment : Fragment() {
             }
         }
 
-        // Handle new CANCEL button click
         cancelButton.setOnClickListener {
             dialog.dismiss()
-            // If it's a new playlist and user cancels without adding songs, delete the empty playlist
             if (isNewPlaylist && playlist.songIds.isEmpty()) {
                 playlists.remove(playlist)
                 PreferenceManager.savePlaylists(requireContext(), playlists)
@@ -414,12 +384,8 @@ class PlaylistsFragment : Fragment() {
                 showToast("Empty playlist deleted")
             }
         }
-
         dialog.show()
-
-        // MAKE DIALOG FULLSCREEN
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        // Re-set background after layout change
         dialog.window?.setBackgroundDrawableResource(R.color.dialog_background)
     }
 
@@ -431,10 +397,8 @@ class PlaylistsFragment : Fragment() {
     private fun addSongsToPlaylist(position: Int, songIds: List<Long>) {
         val playlist = playlists[position]
         val updatedSongIds = playlist.songIds.toMutableList()
-
         val newSongs = songIds.filter { it !in updatedSongIds }
         updatedSongIds.addAll(newSongs)
-
         playlist.songIds.clear()
         playlist.songIds.addAll(updatedSongIds)
         PreferenceManager.savePlaylists(requireContext(), playlists)
@@ -444,7 +408,6 @@ class PlaylistsFragment : Fragment() {
     private fun playPlaylist(position: Int) {
         val playlist = playlists[position]
         val playlistSongs = getPlaylistSongs(playlist)
-
         if (playlistSongs.isNotEmpty()) {
             musicService?.startPlayback(ArrayList(playlistSongs), 0)
             (requireActivity() as MainActivity).navigateToNowPlaying()
@@ -459,7 +422,6 @@ class PlaylistsFragment : Fragment() {
         playlists.forEach { playlist ->
             allPlaylistSongs.addAll(getPlaylistSongs(playlist))
         }
-
         if (allPlaylistSongs.isNotEmpty()) {
             val shuffledSongs = allPlaylistSongs.shuffled()
             musicService?.startPlayback(ArrayList(shuffledSongs), 0)

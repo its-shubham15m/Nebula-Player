@@ -15,7 +15,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog // Use AppCompat AlertDialog
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -34,45 +34,52 @@ class RecentFragment : Fragment() {
     private lateinit var btnBack: ImageButton
     private var musicService: MusicService? = null
     private val recentSongs = mutableListOf<Song>()
-    private lateinit var adapter: SongAdapter // Keep adapter reference
+    private lateinit var adapter: SongAdapter
 
     // Delete request launcher
     private lateinit var deleteResultLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Initialize delete launcher
         deleteResultLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 Toast.makeText(requireContext(), "Song deleted successfully", Toast.LENGTH_SHORT).show()
-                refreshData() // Reload data after deletion
+                refreshData()
             } else {
                 Toast.makeText(requireContext(), "Song could not be deleted", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    override fun onCreateView( // Unchanged
+    override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_recent, container, false)
         initializeViews(view)
-        loadRecentSongs() // Load initial data
+        loadRecentSongs()
         return view
     }
 
-    override fun onResume() { // Unchanged
-        super.onResume()
-        (requireActivity() as MainActivity).setDrawerLocked(true)
-        loadRecentSongs() // Refresh on resume
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // Padding fix
+        val bottomPadding = (140 * resources.displayMetrics.density).toInt()
+        recyclerView.clipToPadding = false
+        recyclerView.setPadding(0, 0, 0, bottomPadding)
     }
 
-    override fun onPause() { // Unchanged
+    override fun onResume() {
+        super.onResume()
+        (requireActivity() as MainActivity).setDrawerLocked(true)
+        loadRecentSongs()
+    }
+
+    override fun onPause() {
         super.onPause()
         (requireActivity() as MainActivity).setDrawerLocked(false)
     }
 
-    private fun initializeViews(view: View) { // Unchanged
+    private fun initializeViews(view: View) {
         recyclerView = view.findViewById(R.id.recycler_view_recent)
         tvEmpty = view.findViewById(R.id.tv_empty_recent)
         btnBack = view.findViewById(R.id.btn_back)
@@ -80,7 +87,12 @@ class RecentFragment : Fragment() {
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            val parent = parentFragment
+            if (parent is HomePageFragment) {
+                parent.childFragmentManager.popBackStack()
+            } else {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
         }
         shuffleCard.setOnClickListener {
             shuffleRecentSongs()
@@ -96,11 +108,10 @@ class RecentFragment : Fragment() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun loadRecentSongs() { // Unchanged
+    private fun loadRecentSongs() {
         val recentSongIds = PreferenceManager.getRecentSongs(requireContext())
-        val allSongs = SongRepository.getAllSongs(requireContext()) // Consider optimization if slow
+        val allSongs = SongRepository.getAllSongs(requireContext())
         recentSongs.clear()
-        // Maintain the order from recentSongIds
         recentSongs.addAll(recentSongIds.mapNotNull { id -> allSongs.find { it.id == id } })
 
         if (recentSongs.isEmpty()) {
@@ -112,23 +123,21 @@ class RecentFragment : Fragment() {
             recyclerView.visibility = View.VISIBLE
             view?.findViewById<com.google.android.material.card.MaterialCardView>(R.id.shuffle_all_card)?.visibility = View.VISIBLE
         }
-        setupRecyclerView() // Call setup after loading
+        setupRecyclerView()
     }
 
-    // UPDATED: Correct adapter call
     private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        adapter = SongAdapter( // Assign to class member
+        adapter = SongAdapter(
             context = requireContext(),
             songs = recentSongs,
             onItemClick = { position -> playSong(position) },
-            onDataChanged = { refreshData() }, // Use refreshData
+            onDataChanged = { refreshData() },
             onDeleteRequest = { song -> requestDeleteSong(song) }
         )
         recyclerView.adapter = adapter
     }
 
-    // NEW: Handles delete request
     private fun requestDeleteSong(song: Song) {
         try {
             val intentSender = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -164,16 +173,15 @@ class RecentFragment : Fragment() {
         }
     }
 
-
-    private fun playSong(position: Int) { // Unchanged
+    private fun playSong(position: Int) {
         if (position < 0 || position >= recentSongs.size) return
         val songToPlay = recentSongs[position]
-        PreferenceManager.addRecentSong(requireContext(), songToPlay.id) // Move to top
+        PreferenceManager.addRecentSong(requireContext(), songToPlay.id)
         musicService?.startPlayback(ArrayList(recentSongs), position)
         (requireActivity() as MainActivity).navigateToNowPlaying()
     }
 
-    private fun shuffleRecentSongs() { // Unchanged
+    private fun shuffleRecentSongs() {
         if (recentSongs.isNotEmpty()) {
             val shuffledSongs = recentSongs.shuffled()
             musicService?.startPlayback(ArrayList(shuffledSongs), 0)
@@ -185,9 +193,9 @@ class RecentFragment : Fragment() {
         }
     }
 
-    private fun showSortDialog() { // Unchanged (Use AppCompat AlertDialog)
+    private fun showSortDialog() {
         val items = arrayOf("Most Recent", "Least Recent", "Name (A-Z)", "Name (Z-A)")
-        AlertDialog.Builder(requireContext()) // Use AppCompat
+        AlertDialog.Builder(requireContext())
             .setTitle("Sort by")
             .setItems(items) { _, which ->
                 when (which) {
@@ -200,30 +208,28 @@ class RecentFragment : Fragment() {
             .show()
     }
 
-    private fun sortRecentByDate(mostRecentFirst: Boolean) { // Unchanged
+    private fun sortRecentByDate(mostRecentFirst: Boolean) {
         val recentSongIds = PreferenceManager.getRecentSongs(requireContext())
-        // Sorting logic based on original index in recentSongIds
         recentSongs.sortBy { song -> recentSongIds.indexOf(song.id) }
         if (!mostRecentFirst) {
-            recentSongs.reverse() // Reverse for least recent first
+            recentSongs.reverse()
         }
-        adapter.notifyDataSetChanged() // Use class member adapter
+        adapter.notifyDataSetChanged()
         showToast("Sorted by ${if (mostRecentFirst) "most recent" else "least recent"}")
     }
 
-
-    private fun sortRecentByName(ascending: Boolean) { // Unchanged
-        recentSongs.sortBy { it.title.lowercase() } // Sort by lowercase
+    private fun sortRecentByName(ascending: Boolean) {
+        recentSongs.sortBy { it.title.lowercase() }
         if (!ascending) recentSongs.reverse()
-        adapter.notifyDataSetChanged() // Use class member adapter
+        adapter.notifyDataSetChanged()
         showToast("Sorted by name ${if (ascending) "A-Z" else "Z-A"}")
     }
 
-    private fun showToast(message: String) { // Unchanged
+    private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
-    fun refreshData() { // Unchanged
+    fun refreshData() {
         loadRecentSongs()
     }
 }
