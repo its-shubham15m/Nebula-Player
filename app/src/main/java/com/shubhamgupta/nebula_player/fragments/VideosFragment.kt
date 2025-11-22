@@ -43,6 +43,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.regex.Pattern
+import kotlin.math.min
 
 class VideosFragment : Fragment() {
 
@@ -96,8 +97,6 @@ class VideosFragment : Fragment() {
 
                 currentSortType = newSortType
                 // If global sort is triggered, we usually disable grouping/folders to show the sorted list
-                // OR we can keep grouping but sort the groups.
-                // Standard behavior: Sort disables folder navigation if deep inside, but keeps grouping preference if set.
                 isInFolderView = false
                 PreferenceManager.saveSortPreference(requireContext(), "videos", currentSortType)
                 loadVideos()
@@ -109,6 +108,36 @@ class VideosFragment : Fragment() {
         override fun onChange(selfChange: Boolean) {
             super.onChange(selfChange)
             handler.postDelayed({ refreshDataPreserveState() }, 1000)
+        }
+    }
+
+    companion object {
+        /**
+         * HELPER METHOD FOR ADAPTER
+         * Call this from your VideoAdapter.onBindViewHolder to fix resolution text.
+         * Example: holder.resolution.text = VideosFragment.formatResolution(video.resolution)
+         */
+        fun formatResolution(resolutionString: String?): String {
+            if (resolutionString.isNullOrEmpty()) return ""
+            try {
+                // Expected format "1920x1080" or similar
+                val parts = resolutionString.split("x", "X")
+                if (parts.size == 2) {
+                    val height = parts[1].trim().toIntOrNull() ?: return resolutionString
+                    return when {
+                        height >= 2160 -> "4K"
+                        height >= 1440 -> "1440p"
+                        height >= 1080 -> "1080p"
+                        height >= 720 -> "720p"
+                        height >= 480 -> "480p"
+                        height >= 360 -> "360p"
+                        else -> resolutionString
+                    }
+                }
+            } catch (e: Exception) {
+                return resolutionString
+            }
+            return resolutionString
         }
     }
 
@@ -391,8 +420,6 @@ class VideosFragment : Fragment() {
 
     /**
      * Generates a Group Name based on the filename string.
-     * Implements "Smart Grouping" to cluster videos with similar names.
-     * UPDATED: Relaxed logic to group any files with same starting characters.
      */
     private fun getSmartGroupKey(video: Video): String {
         val title = video.title.trim()
@@ -407,21 +434,13 @@ class VideosFragment : Fragment() {
             return "Camera"
         }
 
-        // 3. General "Strip Suffix" Logic
-        // Replaces any sequence of digits, separators, or braces at the END of the string.
-        // Examples:
-        // "Trip to Goa 1" -> "Trip to Goa"
-        // "Trip to Goa_02" -> "Trip to Goa"
-        // "MyVideo - 01" -> "MyVideo"
-        // "Movie (2024)" -> "Movie"
-
         val suffixRegex = Regex("[\\s_\\-\\.\\(\\)\\[\\]]+\\d+$")
         var cleanTitle = title.replace(suffixRegex, "").trim()
 
         // Remove trailing non-alphanumeric chars if any left
         cleanTitle = cleanTitle.trim { !it.isLetterOrDigit() }
 
-        // If aggressive stripping left it too short, revert to original (prevents grouping different "1.mp4", "2.mp4")
+        // If aggressive stripping left it too short, revert to original
         if (cleanTitle.length >= 2) {
             return cleanTitle
         }

@@ -5,16 +5,18 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="8dp"
-    android:background="?attr/selectableItemBackground">
+    android:padding="8dp">
 
-    <!-- Reduced height further to 145dp for smaller appearance -->
     <androidx.cardview.widget.CardView
+        android:id="@+id/video_card_container"
         android:layout_width="match_parent"
         android:layout_height="145dp"
         app:cardCornerRadius="12dp"
         app:cardElevation="3dp"
-        app:cardBackgroundColor="#202020">
+        app:cardBackgroundColor="#202020"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -32,7 +34,6 @@
                 android:layout_height="match_parent"
                 android:background="#33000000"/>
 
-            <!-- Play icon overlay, ID added for programmatic access -->
             <ImageView
                 android:id="@+id/icon_play_overlay"
                 android:layout_width="40dp"
@@ -88,9 +89,12 @@
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             android:maxLines="2"
-            android:ellipsize="end"/>
+            android:ellipsize="end"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:padding="4dp"/>
 
-        <!-- Options Button -->
         <ImageButton
             android:id="@+id/btn_options"
             android:layout_width="32dp"

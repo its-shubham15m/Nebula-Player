@@ -18,13 +18,12 @@
         app:resize_mode="fit"
         app:shutter_background_color="#000000" />
 
-    <!-- Subtitle View -->
     <TextView
         android:id="@+id/subtitle_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="120dp"
         android:layout_centerHorizontal="true"
         android:gravity="center"
         android:paddingHorizontal="8dp"
@@ -34,7 +33,6 @@
         android:visibility="gone"
         tools:text="Subtitles appear here"/>
 
-    <!-- Touch Overlay for Gestures -->
     <View
         android:id="@+id/touch_overlay"
         android:layout_width="match_parent"
@@ -42,7 +40,6 @@
         android:clickable="true"
         android:focusable="true" />
 
-    <!-- Center Info (Volume/Brightness) -->
     <LinearLayout
         android:id="@+id/center_info_layout"
         android:layout_width="wrap_content"
@@ -60,7 +57,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/ic_volume"
-            app:tint="#FFFFFF" />
+            android:tint="#FFFFFF" />
 
         <TextView
             android:id="@+id/center_info_text"
@@ -73,7 +70,21 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Rewind Overlay -->
+    <TextView
+        android:id="@+id/ratio_info_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:background="@drawable/rounded_background_black_transparent"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:text="Fill Screen"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:elevation="25dp"/>
+
     <FrameLayout
         android:id="@+id/rewind_overlay"
         android:layout_width="120dp"
@@ -89,14 +100,13 @@
             android:gravity="center"
             android:orientation="vertical">
             <ImageView android:layout_width="48dp" android:layout_height="48dp"
-                android:src="@drawable/ic_replay_10" app:tint="#FFFFFF" />
+                android:src="@drawable/ic_replay_10" android:tint="#FFFFFF" />
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginTop="4dp" android:text="-10s" android:textColor="#FFFFFF"
                 android:textSize="16sp" android:textStyle="bold" />
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Forward Overlay -->
     <FrameLayout
         android:id="@+id/forward_overlay"
         android:layout_width="120dp"
@@ -112,14 +122,13 @@
             android:gravity="center"
             android:orientation="vertical">
             <ImageView android:layout_width="48dp" android:layout_height="48dp"
-                android:src="@drawable/ic_forward_10" app:tint="#FFFFFF" />
+                android:src="@drawable/ic_forward_10" android:tint="#FFFFFF" />
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginTop="4dp" android:text="+10s" android:textColor="#FFFFFF"
                 android:textSize="16sp" android:textStyle="bold" />
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Lock Overlay -->
     <FrameLayout
         android:id="@+id/lock_overlay"
         android:layout_width="wrap_content"
@@ -130,17 +139,16 @@
         android:visibility="gone"
         android:elevation="50dp">
 
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/unlock_btn"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:background="@drawable/rounded_background_black_transparent"
-            android:src="@drawable/ic_lock_open"
-            app:tint="#FFFFFF"
-            android:padding="12dp"/>
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_lock_open"
+            android:tint="#FFFFFF" />
     </FrameLayout>
 
-    <!-- SEEK PEEK PREVIEW -->
     <androidx.cardview.widget.CardView
         android:id="@+id/seek_peek_container"
         android:layout_width="wrap_content"
@@ -160,26 +168,28 @@
             android:padding="8dp"/>
     </androidx.cardview.widget.CardView>
 
-    <!-- Top Controls with Gradient -->
     <LinearLayout
         android:id="@+id/top_controls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
         android:background="@drawable/gradient_player_overlay_top"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:paddingTop="32dp"
+        android:padding="12dp"
+        android:paddingTop="12dp"
         android:visibility="visible"
         android:elevation="20dp">
 
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/player_back_btn"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_back"
-            app:tint="#FFFFFF" />
+            app:srcCompat="@drawable/ic_back"
+            android:scaleType="centerInside"
+            android:adjustViewBounds="true"
+            android:tint="#FFFFFF" />
 
         <TextView
             android:id="@+id/player_title"
@@ -187,15 +197,24 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
-            android:layout_marginHorizontal="16dp"
+            android:layout_marginHorizontal="12dp"
             android:singleLine="true"
             android:text="Video Title"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/player_pip_btn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:srcCompat="@drawable/ic_picture_in_picture"
+            android:scaleType="centerInside"
+            android:adjustViewBounds="true"
+            android:tint="#FFFFFF" />
     </LinearLayout>
 
-    <!-- Bottom Controls with Gradient -->
     <LinearLayout
         android:id="@+id/bottom_controls"
         android:layout_width="match_parent"
@@ -204,11 +223,12 @@
         android:background="@drawable/gradient_player_overlay_bottom"
         android:orientation="vertical"
         android:padding="8dp"
-        android:paddingTop="48dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="24dp"
+        android:clipToPadding="false"
         android:visibility="visible"
         android:elevation="20dp">
 
-        <!-- Row 1: SeekBar Only -->
         <SeekBar
             android:id="@+id/player_seekbar"
             android:layout_width="match_parent"
@@ -216,21 +236,19 @@
             android:layout_marginBottom="4dp"
             android:progressTint="#FFFFFF"
             android:thumbTint="#FFFFFF"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"/>
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"/>
 
-        <!-- Row 2: Timestamps below SeekBar -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingHorizontal="18dp"
+            android:paddingHorizontal="10dp"
             android:layout_marginBottom="8dp">
 
             <TextView
                 android:id="@+id/tv_current_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp" />
@@ -248,80 +266,110 @@
                 android:background="?attr/selectableItemBackgroundBorderless"/>
         </RelativeLayout>
 
-        <!-- Row 3: Control Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:layout_marginHorizontal="20dp"
-            android:paddingBottom="16dp">
+            android:layout_marginHorizontal="8dp"
+            android:paddingBottom="10dp">
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_lock_btn"
-                android:layout_width="40dp" android:layout_height="40dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_lock"
-                app:tint="#FFFFFF"
+                app:srcCompat="@drawable/ic_lock"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="#FFFFFF"
                 android:padding="8dp"/>
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_tracks_btn"
-                android:layout_width="40dp" android:layout_height="40dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_subtitles"
-                app:tint="#FFFFFF"
+                app:srcCompat="@drawable/ic_subtitles"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="#FFFFFF"
                 android:padding="8dp"/>
 
-            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_prev_btn"
-                android:layout_width="48dp" android:layout_height="48dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_previous"
-                app:tint="#FFFFFF" />
+                app:srcCompat="@drawable/ic_previous"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="#FFFFFF" />
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_play_pause_btn"
-                android:layout_width="56dp" android:layout_height="48dp"
-                android:layout_marginHorizontal="16dp"
+                android:layout_width="56dp"
+                android:layout_height="48dp"
+                android:layout_marginHorizontal="12dp"
                 android:background="@drawable/rounded_background_black_transparent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_pausen"
-                app:tint="#FFFFFF" />
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                app:srcCompat="@drawable/ic_pausen"
+                android:tint="#FFFFFF" />
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_next_btn"
-                android:layout_width="48dp" android:layout_height="48dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_next"
-                app:tint="#FFFFFF" />
+                app:srcCompat="@drawable/ic_next"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="#FFFFFF" />
 
-            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_aspect_ratio_btn"
-                android:layout_width="40dp" android:layout_height="40dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_aspect_ratio"
-                app:tint="#FFFFFF"
+                app:srcCompat="@drawable/ic_aspect_ratio"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="#FFFFFF"
                 android:padding="8dp"/>
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_orientation_btn"
-                android:layout_width="40dp" android:layout_height="40dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_screen_rotation"
-                app:tint="#FFFFFF"
+                app:srcCompat="@drawable/ic_screen_rotation"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="#FFFFFF"
                 android:padding="8dp"/>
 
-            <ImageButton
+            <!-- FINAL: give end margin so icon won't be cut by system nav/gesture insets -->
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/player_options_btn"
-                android:layout_width="40dp" android:layout_height="40dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="12dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_options"
-                app:tint="#FFFFFF"
+                app:srcCompat="@drawable/ic_options"
+                android:scaleType="centerInside"
+                android:adjustViewBounds="true"
+                android:tint="#FFFFFF"
                 android:padding="8dp"/>
         </LinearLayout>
     </LinearLayout>

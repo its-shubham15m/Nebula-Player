@@ -38,6 +38,8 @@ class VideoAdapter(
 ) : RecyclerView.Adapter<VideoAdapter.VideoViewHolder>() {
 
     inner class VideoViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        // We need the Container (CardView) to set the click listener specifically on it
+        val cardContainer: View = itemView.findViewById(R.id.video_card_container)
         val thumbnail: ImageView = itemView.findViewById(R.id.video_thumbnail)
         val title: TextView = itemView.findViewById(R.id.video_title)
         val duration: TextView = itemView.findViewById(R.id.video_duration)
@@ -63,7 +65,10 @@ class VideoAdapter(
     private fun bindVideo(holder: VideoViewHolder, video: Video) {
         holder.title.text = video.title
         holder.duration.text = formatDuration(video.duration)
-        holder.resolution.text = video.resolution ?: "HD"
+
+        // --- FIX 1: Use the Helper Method for Resolution (e.g., "1080p") ---
+        // Note: Ensure VideosFragment is imported or fully qualified as shown below
+        holder.resolution.text = com.shubhamgupta.nebula_player.fragments.VideosFragment.formatResolution(video.resolution)
 
         holder.duration.isVisible = true
         holder.resolution.isVisible = true
@@ -76,7 +81,16 @@ class VideoAdapter(
             .placeholder(android.R.color.darker_gray)
             .into(holder.thumbnail)
 
-        holder.itemView.setOnClickListener { onItemClick(VideoUiModel.VideoItem(video)) }
+        // --- FIX 2: Set Click Listeners on Specific Views ---
+        // This ensures only the Card or Title ripples, not the whole row, and play works.
+        val playListener = View.OnClickListener { onItemClick(VideoUiModel.VideoItem(video)) }
+
+        holder.cardContainer.setOnClickListener(playListener)
+        holder.title.setOnClickListener(playListener)
+
+        // Remove listener from root to avoid conflicts
+        holder.itemView.setOnClickListener(null)
+
         holder.options.setOnClickListener { showVideoOptions(it, video) }
     }
 
@@ -98,7 +112,11 @@ class VideoAdapter(
             holder.thumbnail.setImageResource(R.drawable.ic_playlist)
         }
 
-        holder.itemView.setOnClickListener { onItemClick(folder) }
+        // Set listeners for Folder navigation as well
+        val openFolderListener = View.OnClickListener { onItemClick(folder) }
+        holder.cardContainer.setOnClickListener(openFolderListener)
+        holder.title.setOnClickListener(openFolderListener)
+        holder.itemView.setOnClickListener(null)
     }
 
     private fun showVideoOptions(view: View, video: Video) {
@@ -123,9 +141,6 @@ class VideoAdapter(
     }
 
     private fun addToPlaylist(video: Video) {
-        // Mock implementation - Playlists are usually managed by ID.
-        // If you have a PlaylistManager, call it here.
-        // For now, just showing the dialog UI as requested.
         val options = arrayOf("+ Create New Playlist", "Favorites")
 
         AlertDialog.Builder(context)

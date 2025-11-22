@@ -1,8 +1,11 @@
 package com.shubhamgupta.nebula_player
 
 import android.annotation.SuppressLint
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.media.AudioManager
@@ -12,8 +15,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import android.util.Rational
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -50,6 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 @UnstableApi
 class VideoPlayerActivity : AppCompatActivity() {
@@ -78,6 +85,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var optionsButton: ImageButton
     private lateinit var lockButton: ImageButton
     private lateinit var unlockButton: ImageButton
+    private lateinit var pipButton: ImageButton
 
     // Overlays
     private lateinit var topControls: LinearLayout
@@ -89,6 +97,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var centerInfoIcon: ImageView
     private lateinit var centerInfoText: TextView
     private lateinit var lockOverlay: FrameLayout
+    private lateinit var ratioInfoChip: TextView
 
     // Seek Peek
     private lateinit var seekPeekContainer: View
@@ -101,10 +110,11 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     // Logic State
     private var isLocked = false
-    private var hasResumeDialogShown = false // FIX: Prevents loop
-    private var isShowRemainingTime = false // FIX: Remaining time toggle
+    private var hasResumeDialogShown = false
+    private var isShowRemainingTime = false
 
     private lateinit var gestureDetector: GestureDetectorCompat
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
     private lateinit var audioManager: AudioManager
 
     // Aspect Ratio Logic
@@ -119,6 +129,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private val hideCenterInfoRunnable = Runnable {
         centerInfoLayout.visibility = View.GONE
     }
+    private val hideRatioChipRunnable = Runnable { ratioInfoChip.visibility = View.GONE }
 
     // Gesture Accumulators
     private var scrollAccumulator = 0f
@@ -150,7 +161,6 @@ class VideoPlayerActivity : AppCompatActivity() {
                     seekBar.progress = current.toInt()
                     currentTimeView.text = formatDuration(current)
 
-                    // FIX: Handle Remaining Time Logic
                     if (isShowRemainingTime) {
                         totalTimeView.text = "-" + formatDuration(duration - current)
                     } else {
@@ -194,10 +204,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         setupSeekBar()
         setupGestures()
 
-        // FIX: Time Toggle Listener
         totalTimeView.setOnClickListener {
             isShowRemainingTime = !isShowRemainingTime
-            handler.post(updateProgressAction) // Immediate update
+            handler.post(updateProgressAction)
         }
 
         hideSystemUI()
@@ -223,6 +232,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         optionsButton = findViewById(R.id.player_options_btn)
         lockButton = findViewById(R.id.player_lock_btn)
         unlockButton = findViewById(R.id.unlock_btn)
+        pipButton = findViewById(R.id.player_pip_btn)
         lockOverlay = findViewById(R.id.lock_overlay)
 
         topControls = findViewById(R.id.top_controls)
@@ -233,6 +243,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         centerInfoLayout = findViewById(R.id.center_info_layout)
         centerInfoIcon = findViewById(R.id.center_info_icon)
         centerInfoText = findViewById(R.id.center_info_text)
+        ratioInfoChip = findViewById(R.id.ratio_info_chip)
 
         seekPeekContainer = findViewById(R.id.seek_peek_container)
         seekPeekTime = findViewById(R.id.seek_peek_time)
@@ -300,7 +311,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                                 }
                                 handler.post(updateProgressAction)
                                 applyAspectRatio()
-                                checkResumeStatus() // Check resume only when ready
+                                checkResumeStatus()
                             } else if (state == Player.STATE_ENDED) {
                                 playNextVideo()
                             }
@@ -329,16 +340,14 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     private fun checkResumeStatus() {
-        // FIX: Only check if we haven't shown it for this video session
         if (hasResumeDialogShown) return
 
         val p = player ?: return
         val videoId = videoList.getOrNull(currentVideoIndex)?.id ?: return
         val savedPos = PreferenceManager.getVideoResumePosition(this, videoId)
 
-        // If saved position is valid (e.g., > 5 sec and < 95% of duration)
         if (savedPos > 5000 && savedPos < p.duration - 5000) {
-            hasResumeDialogShown = true // Mark as shown immediately
+            hasResumeDialogShown = true
             p.pause()
 
             AlertDialog.Builder(this)
@@ -355,14 +364,12 @@ class VideoPlayerActivity : AppCompatActivity() {
                     resetAutoHideTimer()
                 }
                 .setOnCancelListener {
-                    // Default to start over if cancelled
                     p.seekTo(0)
                     p.play()
                     resetAutoHideTimer()
                 }
                 .show()
         } else {
-            // If no valid resume point, mark checked so we don't check again
             hasResumeDialogShown = true
         }
     }
@@ -396,7 +403,6 @@ class VideoPlayerActivity : AppCompatActivity() {
             }
         }
 
-        // FIX: Reset states for new video
         hasResumeDialogShown = false
 
         titleView.text = cleanTitle(video.title)
@@ -435,6 +441,74 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         lockButton.setOnClickListener { lockScreen() }
         unlockButton.setOnClickListener { unlockScreen() }
+
+        pipButton.setOnClickListener {
+            tryEnterPiP()
+        }
+    }
+
+    private fun tryEnterPiP() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Check if device supports PiP
+            if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+                Toast.makeText(this, "Device does not support PiP", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            try {
+                // 1. Try to get Aspect Ratio from Player
+                var width = 16
+                var height = 9
+
+                val videoFormat = player?.videoFormat
+                if (videoFormat != null && videoFormat.width > 0 && videoFormat.height > 0) {
+                    width = videoFormat.width
+                    height = videoFormat.height
+                } else if (playerView.width > 0 && playerView.height > 0) {
+                    // 2. Fallback to View Dimensions
+                    width = playerView.width
+                    height = playerView.height
+                }
+
+                val aspectRatio = Rational(width, height)
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(aspectRatio)
+                    .build()
+
+                enterPictureInPictureMode(params)
+            } catch (e: Exception) {
+                // 3. Fallback if Ratio is invalid: Enter PiP without specific ratio
+                Log.e("PiP", "Error entering PiP with ratio, retrying without.", e)
+                try {
+                    enterPictureInPictureMode(PictureInPictureParams.Builder().build())
+                } catch (e2: Exception) {
+                    Log.e("PiP", "Fatal PiP Error", e2)
+                    Toast.makeText(this, "Cannot enter PiP mode", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            Toast.makeText(this, "PiP requires Android 8.0+", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (player?.isPlaying == true && !isLocked) {
+                tryEnterPiP()
+            }
+        }
+        super.onUserLeaveHint()
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) {
+            hideSystemUI()
+            playerView.useController = false
+        } else {
+            showSystemUI()
+            playerView.useController = false
+        }
     }
 
     private fun showOrientationDialog() {
@@ -490,6 +564,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         val viewWidth = findViewById<View>(R.id.root_layout).width
         val viewHeight = findViewById<View>(R.id.root_layout).height
         val params = playerView.layoutParams
+
+        if (viewHeight == 0) return
 
         val screenRatio = viewWidth.toFloat() / viewHeight.toFloat()
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -671,6 +747,28 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupGestures() {
+        // NEW: Scale Gesture for Aspect Ratio
+        scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                if (isLocked) return false
+                val factor = detector.scaleFactor
+                if (factor > 1.1f && currentAspectRatioMode != AspectRatioMode.FILL) {
+                    // Zoom In -> Fill
+                    currentAspectRatioMode = AspectRatioMode.FILL
+                    applyAspectRatio()
+                    showRatioChip("Fill Screen")
+                    return true
+                } else if (factor < 0.9f && currentAspectRatioMode != AspectRatioMode.BEST_FIT) {
+                    // Zoom Out -> Best Fit
+                    currentAspectRatioMode = AspectRatioMode.BEST_FIT
+                    applyAspectRatio()
+                    showRatioChip("Original")
+                    return true
+                }
+                return false
+            }
+        })
+
         gestureDetector = GestureDetectorCompat(this, object : GestureDetector.SimpleOnGestureListener() {
             private var isVolume = false
             private var isBrightness = false
@@ -686,8 +784,6 @@ class VideoPlayerActivity : AppCompatActivity() {
                 } else if (x > width * 0.65) {
                     seekRelative(10000) // Double tap right: Forward 10s
                 } else {
-                    // Double tap center: Play/Pause
-                    // Removed the showCenterInfo call to avoid the centering issue
                     if (player!!.isPlaying) player!!.pause() else player!!.play()
                 }
                 return true
@@ -706,12 +802,11 @@ class VideoPlayerActivity : AppCompatActivity() {
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
                 if (e1 == null || isLocked) return false
                 if (!isVolume && !isBrightness) {
-                    // Decide if adjusting volume (right side) or brightness (left side)
                     if (e1.x > playerView.width / 2) isVolume = true else isBrightness = true
                 }
 
                 scrollAccumulator += distanceY
-                if (Math.abs(scrollAccumulator) > SCROLL_THRESHOLD) {
+                if (abs(scrollAccumulator) > SCROLL_THRESHOLD) {
                     val steps = (scrollAccumulator / SCROLL_THRESHOLD).toInt()
                     if (isVolume) adjustVolume(steps) else adjustBrightness(steps)
                     scrollAccumulator %= SCROLL_THRESHOLD
@@ -728,12 +823,22 @@ class VideoPlayerActivity : AppCompatActivity() {
         })
 
         touchOverlay.setOnTouchListener { _, event ->
+            scaleGestureDetector.onTouchEvent(event) // Handle Scale First
+            if (scaleGestureDetector.isInProgress) return@setOnTouchListener true
+
             if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
                 handler.postDelayed(hideCenterInfoRunnable, 500)
                 scrollAccumulator = 0f
             }
             gestureDetector.onTouchEvent(event)
         }
+    }
+
+    private fun showRatioChip(text: String) {
+        ratioInfoChip.text = text
+        ratioInfoChip.visibility = View.VISIBLE
+        handler.removeCallbacks(hideRatioChipRunnable)
+        handler.postDelayed(hideRatioChipRunnable, 1000)
     }
 
     private fun adjustVolume(steps: Int) {
@@ -885,6 +990,10 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     private fun hideSystemUI() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode) {
+            return
+        }
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.hide(WindowInsetsCompat.Type.systemBars())
@@ -892,6 +1001,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         topControls.visibility = View.GONE
         bottomControls.visibility = View.GONE
         seekPeekContainer.visibility = View.GONE
+        ratioInfoChip.visibility = View.GONE
     }
 
     private fun showSystemUI() {
@@ -920,6 +1030,10 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode) {
+            return
+        }
+
         player?.let {
             if (currentVideoUri != null) {
                 val id = videoList.getOrNull(currentVideoIndex)?.id
@@ -934,6 +1048,19 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         val brightness = window.attributes.screenBrightness
         if (brightness != -1f) PreferenceManager.saveVideoBrightness(this, brightness)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode) {
+            player?.let {
+                if (currentVideoUri != null) {
+                    val id = videoList.getOrNull(currentVideoIndex)?.id
+                    if (id != null) PreferenceManager.saveVideoResumePosition(this, id, it.currentPosition)
+                }
+                it.pause()
+            }
+        }
     }
 
     override fun onDestroy() {
