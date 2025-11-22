@@ -178,6 +178,9 @@ class MainActivity : AppCompatActivity() {
         savedInstanceBundle = savedInstanceState
         ThemeManager.applySavedTheme(this)
 
+        // FIX: Ensure full edge-to-edge configuration
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         if (window.attributes.windowAnimations == 0 || window.decorView.background == null) {
             window.setBackgroundDrawableResource(android.R.color.transparent)
         }
@@ -377,7 +380,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupMiniPlayerInsets() {
-        val miniPlayerContainer = findViewById<View>(R.id.mini_player_container)
+        // Ensure insets are passed down correctly from the root.
+        // Returning 'insets' allows propagation to children (like Fragments).
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout) { _, insets ->
             insets
         }
@@ -424,6 +428,7 @@ class MainActivity : AppCompatActivity() {
         @Suppress("DEPRECATION")
         window.navigationBarColor = Color.TRANSPARENT
 
+        // Ensure we are still in edge-to-edge mode
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         val windowController = WindowCompat.getInsetsController(window, decorView)
@@ -548,6 +553,10 @@ class MainActivity : AppCompatActivity() {
 
     fun openDrawer() {
         drawerLayout.openDrawer(GravityCompat.START)
+    }
+
+    fun isDrawerLocked(): Boolean {
+        return drawerLayout.getDrawerLockMode(GravityCompat.START) != DrawerLayout.LOCK_MODE_UNLOCKED
     }
 
     fun setDrawerLocked(locked: Boolean) {
@@ -716,14 +725,12 @@ class MainActivity : AppCompatActivity() {
         }, 300)
     }
 
-    // UPDATED: Navigation now delegates to HomePageFragment to keep BottomNav visible
     fun showFavoritesPage() {
         val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
 
         if (homeFragment != null && homeFragment.isVisible) {
             homeFragment.navigateToFavorites()
         } else {
-            // If home is not current, go to home first then nav
             showHomePageFragment()
             handler.postDelayed({
                 (supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment)?.navigateToFavorites()
@@ -732,7 +739,6 @@ class MainActivity : AppCompatActivity() {
         drawerLayout.closeDrawer(GravityCompat.START)
     }
 
-    // UPDATED: Navigation now delegates to HomePageFragment
     fun showPlaylistsPage() {
         val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
 
@@ -747,7 +753,6 @@ class MainActivity : AppCompatActivity() {
         drawerLayout.closeDrawer(GravityCompat.START)
     }
 
-    // UPDATED: Navigation now delegates to HomePageFragment
     fun showRecentPage() {
         val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
 
@@ -782,7 +787,6 @@ class MainActivity : AppCompatActivity() {
                 currentFragment == "about" ||
                 currentFragment == "equalizer"
 
-        // We want it visible on Home, NowPlaying (handled differently), and when browsing via Home
         val shouldBeVisible = !isSettingsOrAboutOrEqualizer && currentFragment != "now_playing"
 
         Log.d("MainActivity", "updateMiniPlayerVisibility: currentFragment=$currentFragment, shouldBeVisible=$shouldBeVisible")
@@ -795,7 +799,7 @@ class MainActivity : AppCompatActivity() {
                     setReorderingAllowed(true)
                 }
             }
-            // Ensure margin is correct if we are on Home (handled by HomeFragment usually, but good to check)
+            // Ensure margin is correct if we are on Home
             val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
             if (homeFragment != null && homeFragment.isVisible) {
                 homeFragment.updateMiniPlayerPosition()
@@ -841,7 +845,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // UPDATED: Handle Back Press to work with HomePageFragment internal stack
     private fun handleBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -869,7 +872,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCurrentFragmentAfterBackPress() {
-        // Short delay to allow fragment transaction to settle
         handler.postDelayed({
             when {
                 supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT")?.isVisible == true -> {
@@ -895,7 +897,6 @@ class MainActivity : AppCompatActivity() {
                     isMiniPlayerAllowed = false
                 }
                 else -> {
-                    // Default to home if unsure
                     currentFragment = "home"
                     isMiniPlayerAllowed = true
                     drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
@@ -936,7 +937,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun forceRefreshCurrentFragment() {
-        // Trigger refresh on the home page active fragment
         val homeFragment = supportFragmentManager.findFragmentByTag("HOME_PAGE_FRAGMENT") as? HomePageFragment
         homeFragment?.refreshData()
     }

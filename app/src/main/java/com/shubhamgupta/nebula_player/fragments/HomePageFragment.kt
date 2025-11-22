@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnLayout
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -16,6 +17,7 @@ import com.shubhamgupta.nebula_player.R
 class HomePageFragment : Fragment() {
 
     private lateinit var bottomNavigationView: BottomNavigationView
+    private lateinit var contentContainer: View
 
     // Track the currently active fragment to hide it when switching
     private var activeFragment: Fragment? = null
@@ -37,21 +39,42 @@ class HomePageFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         bottomNavigationView = view.findViewById(R.id.bottom_navigation)
+        contentContainer = view.findViewById(R.id.home_content_container)
 
-        bottomNavigationView.doOnLayout {
-            updateMiniPlayerPosition()
+        // --- FIX START: Handle Window Insets for Bottom Navigation Correctly ---
+        // This ensures the BottomNav gets padding ONLY for the system navigation bar
+        // preventing the "double height" or "black bar" interference.
+        ViewCompat.setOnApplyWindowInsetsListener(bottomNavigationView) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // Apply bottom padding equal to the navigation bar height
+            v.updatePadding(bottom = systemBars.bottom)
+            // Return insets so they can be dispatched if needed, but we consumed the bottom aspect for this view
+            insets
         }
+        // --- FIX END ---
 
+        // Handle Keyboard (IME) visibility on the root view
         ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
             if (imeVisible) {
                 bottomNavigationView.visibility = View.GONE
                 (requireActivity() as? MainActivity)?.setMiniPlayerBottomMargin(0)
             } else {
-                bottomNavigationView.visibility = View.VISIBLE
+                // Only show if it wasn't explicitly hidden by logic (like full screen video)
+                // But for standard keyboard handling, we restore it:
+                if ((requireActivity() as? MainActivity)?.isDrawerLocked() == false) {
+                    bottomNavigationView.visibility = View.VISIBLE
+                } else {
+                    // If we are in a specific mode (like deep settings), keep logic consistent
+                    bottomNavigationView.visibility = View.VISIBLE
+                }
                 bottomNavigationView.post { updateMiniPlayerPosition() }
             }
             insets
+        }
+
+        bottomNavigationView.doOnLayout {
+            updateMiniPlayerPosition()
         }
 
         bottomNavigationView.setOnItemSelectedListener { item ->
@@ -166,8 +189,12 @@ class HomePageFragment : Fragment() {
 
     fun updateMiniPlayerPosition() {
         if (bottomNavigationView.visibility == View.VISIBLE) {
-            val height = bottomNavigationView.height
+            // We need to account for the padding we added for the system bars
+            val height = bottomNavigationView.measuredHeight
+            // Standard margin above the nav bar
             val offsetPx = (4 * resources.displayMetrics.density).toInt()
+
+            // If the height is reported as 0 (not laid out yet), retry logic handles it via post()
             val margin = if (height > 0) height + offsetPx else offsetPx
             (requireActivity() as? MainActivity)?.setMiniPlayerBottomMargin(margin)
         } else {
