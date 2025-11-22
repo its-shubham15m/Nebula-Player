@@ -23,6 +23,8 @@ import com.shubhamgupta.nebula_player.adapters.AlbumAdapter
 import com.shubhamgupta.nebula_player.models.Album
 import com.shubhamgupta.nebula_player.repository.SongRepository
 import com.shubhamgupta.nebula_player.utils.PreferenceManager
+// Explicit import to ensure reference is resolved
+import com.shubhamgupta.nebula_player.fragments.AlbumSongsFragment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -135,6 +137,11 @@ class AlbumsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // Add padding to bottom so last item isn't hidden by miniplayer
+        val bottomPadding = (140 * resources.displayMetrics.density).toInt()
+        recyclerView.clipToPadding = false
+        recyclerView.setPadding(0, 0, 0, bottomPadding)
+
         if (albumList.isNotEmpty()) {
             updateAdapter()
             restoreScrollState()
@@ -173,9 +180,11 @@ class AlbumsFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        requireActivity().unregisterReceiver(searchReceiver)
-        requireActivity().unregisterReceiver(sortReceiver)
-        requireActivity().unregisterReceiver(refreshReceiver)
+        try {
+            requireActivity().unregisterReceiver(searchReceiver)
+            requireActivity().unregisterReceiver(sortReceiver)
+            requireActivity().unregisterReceiver(refreshReceiver)
+        } catch (e: Exception) { Log.e("AlbumsFragment", "Error unregistering receivers", e) }
         loadJob?.cancel()
         saveScrollState()
     }
@@ -291,11 +300,27 @@ class AlbumsFragment : Fragment() {
     }
 
     private fun openAlbumSongs(position: Int) {
+        if (position < 0 || position >= filteredAlbumList.size) return
         val album = filteredAlbumList[position]
         val fragment = AlbumSongsFragment.newInstance(album)
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .addToBackStack("album_songs")
-            .commit()
+
+        // Navigation Logic: Check if we are inside HomePageFragment to handle MiniPlayer correctly
+        // (MusicPageFragment -> HomePageFragment)
+        val parent = parentFragment?.parentFragment // MusicPage -> Home
+
+        if (parent is HomePageFragment) {
+            parent.childFragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right)
+                .replace(R.id.home_content_container, fragment)
+                .addToBackStack("album_songs")
+                .commit()
+            parent.updateMiniPlayerPosition()
+        } else {
+            // Fallback for flat structure
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack("album_songs")
+                .commit()
+        }
     }
 }

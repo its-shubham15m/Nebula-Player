@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import com.google.android.material.chip.Chip
 import com.shubhamgupta.nebula_player.MainActivity
 import com.shubhamgupta.nebula_player.R
 
@@ -27,13 +28,13 @@ class AboutFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         // Lock drawer when fragment is visible
-        (requireActivity() as com.shubhamgupta.nebula_player.MainActivity).setDrawerLocked(true)
+        (requireActivity() as? MainActivity)?.setDrawerLocked(true)
     }
 
     override fun onPause() {
         super.onPause()
         // Unlock drawer when leaving fragment
-        (requireActivity() as com.shubhamgupta.nebula_player.MainActivity).setDrawerLocked(false)
+        (requireActivity() as? MainActivity)?.setDrawerLocked(false)
     }
 
     @SuppressLint("SetTextI18n")
@@ -44,10 +45,13 @@ class AboutFragment : Fragment() {
             requireActivity().supportFragmentManager.popBackStack()
         }
 
-        val appVersion = (activity as? MainActivity)?.getAppVersionName() ?: "v?"
+        val appVersion = (activity as? MainActivity)?.getAppVersionName() ?: "v1.0"
+
+        // Update Header
+        view.findViewById<Chip>(R.id.chip_version).text = "Beta $appVersion"
+
+        // Update Developer Info
         view.findViewById<TextView>(R.id.tv_developer_name).text = "Shubham Gupta"
         view.findViewById<TextView>(R.id.tv_developer_email).text = "shubhamgupta15m@gmail.com"
-        view.findViewById<TextView>(R.id.tv_app_version).text = "Nebula Music $appVersion"
-        view.findViewById<TextView>(R.id.tv_app_description).text = "A beautiful music player with modern UI and smooth experience."
     }
 }

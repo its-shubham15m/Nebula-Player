@@ -23,6 +23,8 @@ import com.shubhamgupta.nebula_player.adapters.ArtistAdapter
 import com.shubhamgupta.nebula_player.models.Artist
 import com.shubhamgupta.nebula_player.repository.SongRepository
 import com.shubhamgupta.nebula_player.utils.PreferenceManager
+// Explicit import
+import com.shubhamgupta.nebula_player.fragments.ArtistSongsFragment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,9 +63,9 @@ class ArtistsFragment : Fragment() {
                 recyclerView.isEnabled = enabled
 
                 if (!enabled) {
-                    recyclerView.setOnTouchListener { _, _ -> true } // Block touches
+                    recyclerView.setOnTouchListener { _, _ -> true }
                 } else {
-                    recyclerView.setOnTouchListener(null) // Allow touches
+                    recyclerView.setOnTouchListener(null)
                 }
             }
         } catch (e: Exception) {
@@ -135,6 +137,11 @@ class ArtistsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // Fix: Add Padding for MiniPlayer
+        val bottomPadding = (140 * resources.displayMetrics.density).toInt()
+        recyclerView.clipToPadding = false
+        recyclerView.setPadding(0, 0, 0, bottomPadding)
+
         if (artistList.isNotEmpty()) {
             updateAdapter()
             restoreScrollState()
@@ -173,9 +180,11 @@ class ArtistsFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        requireActivity().unregisterReceiver(searchReceiver)
-        requireActivity().unregisterReceiver(sortReceiver)
-        requireActivity().unregisterReceiver(refreshReceiver)
+        try {
+            requireActivity().unregisterReceiver(searchReceiver)
+            requireActivity().unregisterReceiver(sortReceiver)
+            requireActivity().unregisterReceiver(refreshReceiver)
+        } catch (e: Exception) {}
         loadJob?.cancel()
         saveScrollState()
     }
@@ -283,11 +292,25 @@ class ArtistsFragment : Fragment() {
     }
 
     private fun openArtistSongs(position: Int) {
+        if (position < 0 || position >= filteredArtistList.size) return
         val artist = filteredArtistList[position]
         val fragment = ArtistSongsFragment.newInstance(artist)
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .addToBackStack("artist_songs")
-            .commit()
+
+        // Navigation Logic: Check hierarchy
+        val parent = parentFragment?.parentFragment // MusicPage -> Home
+
+        if (parent is HomePageFragment) {
+            parent.childFragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right)
+                .replace(R.id.home_content_container, fragment)
+                .addToBackStack("artist_songs")
+                .commit()
+            parent.updateMiniPlayerPosition()
+        } else {
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack("artist_songs")
+                .commit()
+        }
     }
 }

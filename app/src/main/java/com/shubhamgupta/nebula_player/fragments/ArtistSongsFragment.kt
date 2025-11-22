@@ -22,11 +22,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.shubhamgupta.nebula_player.MainActivity // Import MainActivity
+import com.shubhamgupta.nebula_player.MainActivity
 import com.shubhamgupta.nebula_player.R
 import com.shubhamgupta.nebula_player.adapters.SongAdapter
 import com.shubhamgupta.nebula_player.models.Artist
-import com.shubhamgupta.nebula_player.models.Song // Import Song
+import com.shubhamgupta.nebula_player.models.Song
 import com.shubhamgupta.nebula_player.utils.PreferenceManager
 
 class ArtistSongsFragment : Fragment() {
@@ -37,12 +37,12 @@ class ArtistSongsFragment : Fragment() {
     private lateinit var btnBack: ImageButton
     private lateinit var tvEmpty: TextView
     private var currentArtist: Artist? = null
-    private var artistSongsList = mutableListOf<Song>() // Use MutableList
+    private var artistSongsList = mutableListOf<Song>()
 
     // Delete request launcher
     private lateinit var deleteResultLauncher: ActivityResultLauncher<IntentSenderRequest>
 
-    private val playbackReceiver = object : BroadcastReceiver() { // Unchanged
+    private val playbackReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 "SONG_CHANGED", "PLAYBACK_STATE_CHANGED" -> {
@@ -52,7 +52,7 @@ class ArtistSongsFragment : Fragment() {
         }
     }
 
-    companion object { // Unchanged
+    companion object {
         private const val ARG_ARTIST = "artist"
         fun newInstance(artist: Artist): ArtistSongsFragment {
             val fragment = ArtistSongsFragment()
@@ -76,7 +76,7 @@ class ArtistSongsFragment : Fragment() {
         }
     }
 
-    override fun onCreateView( // Unchanged
+    override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_artist_songs, container, false)
@@ -84,7 +84,17 @@ class ArtistSongsFragment : Fragment() {
         return view
     }
 
-    override fun onResume() { // Unchanged (except receiver flags)
+    // UPDATED: Added to fix layout padding issue (same as FavoritesFragment)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // Add padding to the bottom of RecyclerView so the last item is not hidden behind
+        // the MiniPlayer and Bottom Navigation
+        val bottomPadding = (140 * resources.displayMetrics.density).toInt() // Approx 140dp
+        recyclerView.clipToPadding = false
+        recyclerView.setPadding(0, 0, 0, bottomPadding)
+    }
+
+    override fun onResume() {
         super.onResume()
         (requireActivity() as MainActivity).setDrawerLocked(true)
         val filter = IntentFilter().apply {
@@ -96,7 +106,7 @@ class ArtistSongsFragment : Fragment() {
         currentArtist?.let { setupArtistSongs(it) }
     }
 
-    override fun onPause() { // Unchanged
+    override fun onPause() {
         super.onPause()
         (requireActivity() as MainActivity).setDrawerLocked(false)
         try {
@@ -104,7 +114,7 @@ class ArtistSongsFragment : Fragment() {
         } catch (e: Exception) { /* Ignore */ }
     }
 
-    private fun initializeViews(view: View) { // Unchanged
+    private fun initializeViews(view: View) {
         recyclerView = view.findViewById(R.id.recycler_view_artist_songs)
         artistNameView = view.findViewById(R.id.artist_name)
         songCountView = view.findViewById(R.id.artist_song_count)
@@ -115,16 +125,22 @@ class ArtistSongsFragment : Fragment() {
         currentArtist = arguments?.getParcelable(ARG_ARTIST)
         currentArtist?.let { setupArtistSongs(it) }
 
+        // UPDATED: Correct back navigation handling
         btnBack.setOnClickListener {
-            requireActivity().supportFragmentManager.popBackStack()
+            val parent = parentFragment
+            if (parent is HomePageFragment) {
+                parent.childFragmentManager.popBackStack()
+            } else {
+                requireActivity().supportFragmentManager.popBackStack()
+            }
         }
+
         val shuffleCard = view.findViewById<com.google.android.material.card.MaterialCardView>(R.id.shuffle_all_card)
         shuffleCard.setOnClickListener {
             shuffleArtistSongs()
         }
     }
 
-    // UPDATED: Use MutableList and correct adapter call
     private fun setupArtistSongs(artist: Artist) {
         artistNameView.text = artist.name
         songCountView.text = "${artist.songCount} songs"
@@ -144,8 +160,8 @@ class ArtistSongsFragment : Fragment() {
 
             val adapter = SongAdapter(
                 context = requireContext(),
-                songs = artistSongsList, // Pass mutable list
-                onItemClick = { pos -> openNowPlaying(pos) }, // Simplified call
+                songs = artistSongsList,
+                onItemClick = { pos -> openNowPlaying(pos) },
                 onDataChanged = { refreshData() },
                 onDeleteRequest = { song -> requestDeleteSong(song) }
             )
@@ -153,7 +169,6 @@ class ArtistSongsFragment : Fragment() {
         }
     }
 
-    // UPDATED: Use artistSongsList
     private fun shuffleArtistSongs() {
         if (artistSongsList.isNotEmpty()) {
             val shuffledSongs = artistSongsList.shuffled()
@@ -167,7 +182,6 @@ class ArtistSongsFragment : Fragment() {
         }
     }
 
-    // NEW: Handles delete request
     private fun requestDeleteSong(song: Song) {
         try {
             val intentSender = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -203,23 +217,21 @@ class ArtistSongsFragment : Fragment() {
         }
     }
 
-    // UPDATED: Use artistSongsList
     private fun openNowPlaying(position: Int) {
         if (position < 0 || position >= artistSongsList.size) return
         val songToPlay = artistSongsList[position]
         PreferenceManager.addRecentSong(requireContext(), songToPlay.id)
         val service = (requireActivity() as MainActivity).getMusicService()
-        service?.startPlayback(ArrayList(artistSongsList), position) // Use local list
+        service?.startPlayback(ArrayList(artistSongsList), position)
         (requireActivity() as MainActivity).navigateToNowPlaying()
     }
 
-    private fun showToast(message: String) { // Unchanged
+    private fun showToast(message: String) {
         android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_SHORT).show()
     }
 
-    fun refreshData() { // Unchanged
+    fun refreshData() {
         currentArtist?.let {
-            // Re-fetch or update artist data if necessary
             setupArtistSongs(it)
         }
     }

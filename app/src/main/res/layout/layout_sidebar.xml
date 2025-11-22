@@ -4,208 +4,380 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/sidebar"
-    android:layout_width="300dp"
+    android:layout_width="320dp"
     android:layout_height="match_parent"
     android:layout_gravity="start"
     android:orientation="vertical"
     android:background="?attr/colorSurface"
-    android:elevation="16dp"
+    android:elevation="0dp"
     android:clickable="true"
     android:focusable="true"
-    android:fitsSystemWindows="false"> <LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="180dp"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:paddingTop="32dp"
-    android:background="@color/colorPrimaryContainer">
+    android:fitsSystemWindows="false">
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CornerRound"
-        android:src="@drawable/app_icon"
-        android:scaleType="fitCenter"
-        android:contentDescription="App Icon"/>
-
-    <TextView
-        android:id="@+id/sidebar_app_name"
-        android:layout_width="wrap_content"
+    <!-- 1. HEADER ISLAND -->
+    <FrameLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Nebula Player"
-        android:textColor="@android:color/white"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginTop="8dp"/>
-</LinearLayout>
+        android:paddingHorizontal="16dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="16dp">
 
-    <ScrollView
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            app:cardBackgroundColor="?attr/colorPrimaryContainer">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="20dp">
+
+                <!-- APP ICON -->
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CornerRound"
+                    android:src="@drawable/app_icon"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="App Icon"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="16dp">
+
+                    <TextView
+                        android:id="@+id/sidebar_app_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Nebula Player"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:textSize="18sp"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Redefining how you listen and watch :)"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:alpha="0.75"
+                        android:textSize="10sp"/>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
+
+    <!-- 2. SCROLLABLE MENU CONTENT -->
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:fillViewport="true"
         android:scrollbars="none"
-        android:fitsSystemWindows="false">
+        android:clipToPadding="false"
+        android:paddingBottom="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingTop="16dp"
             android:paddingHorizontal="16dp">
 
+            <!-- Section: Personalization -->
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Options"
-                android:textSize="16sp"
+                android:text="Personalize"
                 android:textStyle="bold"
-                android:textColor="?attr/colorOnSurface"/>
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp"
+                android:textAllCaps="true"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="8dp"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"
-                android:background="?attr/colorOutline" />
-
-            <LinearLayout
-                android:id="@+id/sidebar_appearance"
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="?attr/selectableItemBackground"
-                android:paddingVertical="8dp"
-                android:minHeight="48dp"
-                android:gravity="center_vertical"
-                android:clickable="true"
-                android:focusable="true">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutline"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                android:layout_marginBottom="24dp">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Appearance"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurface"
-                    android:layout_marginBottom="2dp"/>
-
-                <TextView
-                    android:id="@+id/sidebar_theme_mode"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Theme Mode: System"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/theme_mode_options"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone"
-                android:paddingTop="4dp">
-
-                <RadioGroup
-                    android:id="@+id/theme_radio_group"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <RadioButton
-                        android:id="@+id/theme_system"
-                        style="?attr/radioButtonStyle"
+                    <!-- Appearance Toggle Row -->
+                    <LinearLayout
+                        android:id="@+id/sidebar_appearance"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="System Default"
-                        android:textSize="14sp"
-                        android:paddingStart="4dp"
-                        android:paddingVertical="8dp"
-                        android:minHeight="40dp" />
+                        android:orientation="horizontal"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="16dp"
+                        android:gravity="center_vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
-                    <RadioButton
-                        android:id="@+id/theme_light"
-                        style="?attr/radioButtonStyle"
+                        <!-- Icon: Explicit 24dp -->
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_theme"
+                            app:tint="?attr/colorOnSurfaceVariant"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="16dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Appearance"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorOnSurface"/>
+
+                            <TextView
+                                android:id="@+id/sidebar_theme_mode"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="System Default"
+                                android:textSize="12sp"
+                                android:textColor="?attr/colorOnSurfaceVariant"/>
+                        </LinearLayout>
+
+                        <!-- Arrow Icon: Added ID for animation -->
+                        <ImageView
+                            android:id="@+id/sidebar_theme_arrow"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_back"
+                            android:rotation="-90"
+                            app:tint="?attr/colorOnSurface"/>
+                    </LinearLayout>
+
+                    <!-- Expandable Theme Options -->
+                    <LinearLayout
+                        android:id="@+id/theme_mode_options"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Light"
-                        android:textSize="14sp"
-                        android:paddingStart="4dp"
-                        android:paddingVertical="8dp"
-                        android:minHeight="40dp" />
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        android:background="?attr/colorSurface"
+                        android:paddingVertical="8dp">
 
-                    <RadioButton
-                        android:id="@+id/theme_dark"
-                        style="?attr/radioButtonStyle"
+                        <RadioGroup
+                            android:id="@+id/theme_radio_group"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="12dp">
+
+                            <RadioButton
+                                android:id="@+id/theme_system"
+                                style="?attr/radioButtonStyle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="System Default"
+                                android:textSize="14sp"
+                                android:layoutDirection="rtl"
+                                android:textAlignment="textStart" />
+
+                            <RadioButton
+                                android:id="@+id/theme_light"
+                                style="?attr/radioButtonStyle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Light Mode"
+                                android:textSize="14sp"
+                                android:layoutDirection="rtl"
+                                android:textAlignment="textStart" />
+
+                            <RadioButton
+                                android:id="@+id/theme_dark"
+                                style="?attr/radioButtonStyle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Dark Mode"
+                                android:textSize="14sp"
+                                android:layoutDirection="rtl"
+                                android:textAlignment="textStart" />
+                        </RadioGroup>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Section: Audio Suite -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Audio Suite"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp"
+                android:textAllCaps="true"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutline"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                android:layout_marginBottom="24dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- Equalizer Item -->
+                    <LinearLayout
+                        android:id="@+id/sidebar_equalizer"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Dark"
-                        android:textSize="14sp"
-                        android:paddingStart="4dp"
-                        android:paddingVertical="8dp"
-                        android:minHeight="40dp" />
-                </RadioGroup>
-            </LinearLayout>
+                        android:orientation="horizontal"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="16dp"
+                        android:gravity="center_vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
+                        <!-- Icon: Explicit 24dp -->
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_equalizer"
+                            app:tint="?attr/colorOnSurfaceVariant"/>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Equalizer &amp; Effects"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface"
+                            android:layout_marginStart="16dp"/>
+                    </LinearLayout>
+
+                    <com.google.android.material.divider.MaterialDivider
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"/>
+
+                    <!-- Settings Item -->
+                    <LinearLayout
+                        android:id="@+id/sidebar_settings"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="16dp"
+                        android:gravity="center_vertical"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <!-- Icon: Explicit 24dp -->
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_settings_sidebar"
+                            app:tint="?attr/colorOnSurfaceVariant"/>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Player Settings"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface"
+                            android:layout_marginStart="16dp"/>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Section: General -->
             <TextView
-                android:id="@+id/sidebar_equalizer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="General"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp"
+                android:textAllCaps="true"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="8dp"/>
+
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Equalizer"
-                android:textSize="14sp"
-                android:paddingVertical="12dp"
-                android:minHeight="48dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground"
-                android:textColor="?attr/colorOnSurface"
-                android:clickable="true"
-                android:focusable="true"/>
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutline"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
-            <TextView
-                android:id="@+id/sidebar_settings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Settings"
-                android:textSize="14sp"
-                android:paddingVertical="12dp"
-                android:minHeight="48dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground"
-                android:textColor="?attr/colorOnSurface"
-                android:clickable="true"
-                android:focusable="true"/>
+                <!-- About Item -->
+                <LinearLayout
+                    android:id="@+id/sidebar_about"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="16dp"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
 
-            <TextView
-                android:id="@+id/sidebar_about"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="About"
-                android:textSize="14sp"
-                android:paddingVertical="12dp"
-                android:minHeight="48dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground"
-                android:textColor="?attr/colorOnSurface"
-                android:clickable="true"
-                android:focusable="true"/>
+                    <!-- Icon: Explicit 24dp -->
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_support"
+                        app:tint="?attr/colorOnSurfaceVariant"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="About Nebula"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface"
+                        android:layout_marginStart="16dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
+    <!-- 3. FOOTER -->
     <LinearLayout
         android:id="@+id/sidebar_footer_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp"
-        android:gravity="center"
-        android:background="?attr/colorSurface">
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0.5dp"
-            android:layout_marginBottom="16dp"
-            android:background="?attr/colorOutline" />
+        android:gravity="center">
 
         <TextView
             android:layout_width="wrap_content"
@@ -220,7 +392,7 @@
             android:id="@+id/sidebar_app_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            tools:text="Version: v0.1.0"
+            tools:text="Version: v1.0.0"
             android:textSize="11sp"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:alpha="0.6"

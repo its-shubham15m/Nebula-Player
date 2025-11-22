@@ -23,6 +23,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
@@ -466,6 +467,9 @@ class MainActivity : AppCompatActivity() {
         themeLight = findViewById(R.id.theme_light)
         themeDark = findViewById(R.id.theme_dark)
 
+        // Find arrow icon for animation
+        val sidebarThemeArrow = findViewById<ImageView>(R.id.sidebar_theme_arrow)
+
         val currentTheme = ThemeManager.getCurrentTheme(this)
         updateThemeUI(currentTheme)
 
@@ -475,7 +479,15 @@ class MainActivity : AppCompatActivity() {
 
         sidebarAppearance.setOnClickListener {
             val isVisible = themeModeOptions.visibility == View.VISIBLE
-            themeModeOptions.visibility = if (isVisible) View.GONE else View.VISIBLE
+            if (isVisible) {
+                // Collapse: Hide options and rotate arrow back to closed state (-90 degrees)
+                themeModeOptions.visibility = View.GONE
+                sidebarThemeArrow?.animate()?.rotation(-90f)?.setDuration(200)?.start()
+            } else {
+                // Expand: Show options and rotate arrow to open state (0 degrees)
+                themeModeOptions.visibility = View.VISIBLE
+                sidebarThemeArrow?.animate()?.rotation(90f)?.setDuration(200)?.start()
+            }
         }
 
         themeRadioGroup.setOnCheckedChangeListener { group, checkedId ->
@@ -483,35 +495,33 @@ class MainActivity : AppCompatActivity() {
                 R.id.theme_system -> {
                     ThemeManager.setTheme(this, ThemeManager.THEME_SYSTEM)
                     updateThemeUI(ThemeManager.THEME_SYSTEM)
-                    themeModeOptions.visibility = View.GONE
+                    // No longer auto-hiding to allow user to see selection change
                     applyThemeAndRecreate()
                 }
                 R.id.theme_light -> {
                     ThemeManager.setTheme(this, ThemeManager.THEME_LIGHT)
                     updateThemeUI(ThemeManager.THEME_LIGHT)
-                    themeModeOptions.visibility = View.GONE
                     applyThemeAndRecreate()
                 }
                 R.id.theme_dark -> {
                     ThemeManager.setTheme(this, ThemeManager.THEME_DARK)
                     updateThemeUI(ThemeManager.THEME_DARK)
-                    themeModeOptions.visibility = View.GONE
                     applyThemeAndRecreate()
                 }
             }
         }
 
-        findViewById<TextView>(R.id.sidebar_equalizer).setOnClickListener {
+        findViewById<View>(R.id.sidebar_equalizer).setOnClickListener {
             showEqualizerPage()
             drawerLayout.closeDrawer(GravityCompat.START)
         }
 
-        findViewById<TextView>(R.id.sidebar_settings).setOnClickListener {
+        findViewById<View>(R.id.sidebar_settings).setOnClickListener {
             showSettingsPage()
             drawerLayout.closeDrawer(GravityCompat.START)
         }
 
-        findViewById<TextView>(R.id.sidebar_about).setOnClickListener {
+        findViewById<View>(R.id.sidebar_about).setOnClickListener {
             showAboutPage()
             drawerLayout.closeDrawer(GravityCompat.START)
         }
@@ -578,6 +588,8 @@ class MainActivity : AppCompatActivity() {
             override fun onDrawerClosed(drawerView: View) {
                 removeTouchInterceptor()
                 themeModeOptions.visibility = View.GONE
+                // Reset arrow on drawer close
+                findViewById<ImageView>(R.id.sidebar_theme_arrow)?.rotation = -90f
             }
 
             override fun onDrawerStateChanged(newState: Int) {}

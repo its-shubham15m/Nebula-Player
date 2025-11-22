@@ -8,13 +8,13 @@
     android:background="@color/colorBackground"
     android:fitsSystemWindows="true">
 
-    <!-- Back Button and Title -->
+    <!-- Custom Toolbar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingVertical="8dp"
+        android:paddingVertical="12dp"
         android:paddingHorizontal="8dp">
 
         <ImageButton
@@ -25,312 +25,415 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Back"
             android:padding="12dp"
-            android:layout_marginStart="4dp"
             app:tint="?attr/colorOnSurface"/>
 
         <TextView
-            android:id="@+id/tv_about_title"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="About"
-            android:textSize="24sp"
+            android:text="About Nebula"
+            android:textSize="20sp"
             android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
             android:textColor="?attr/colorOnSurface"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="16dp"/>
+            android:layout_marginStart="4dp"/>
     </LinearLayout>
 
-    <!-- Content Section -->
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true">
+        android:layout_height="match_parent"
+        android:overScrollMode="ifContentScrolls"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="32dp"
+            android:clipToPadding="false">
 
-            <!-- App Info Card -->
+            <!-- HEADER ISLAND -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
                 app:cardBackgroundColor="?attr/colorSurfaceVariant"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="1dp">
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="24dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:gravity="center"
+                    android:padding="24dp">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/iv_app_icon"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:src="@drawable/app_icon"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CornerRound"
+                        android:elevation="4dp"
+                        android:layout_marginBottom="16dp"/>
 
                     <TextView
-                        android:id="@+id/tv_app_version"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Nebula Music v1.0.0"
-                        android:textSize="18sp"
+                        android:text="@string/app_name"
+                        android:textSize="24sp"
                         android:textStyle="bold"
-                        android:textColor="?attr/colorOnSurface"
-                        android:layout_marginBottom="12dp"/>
+                        android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_version"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="v1.0.0 Beta"
+                        android:textColor="?attr/colorOnSecondaryContainer"
+                        app:chipBackgroundColor="?attr/colorSecondaryContainer"
+                        app:chipStrokeWidth="0dp"
+                        android:enabled="false"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="8dp"/>
 
                     <TextView
                         android:id="@+id/tv_app_description"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="A beautiful music player with modern UI and smooth experience."
+                        android:text="The ultimate local media experience. Redefining how you listen and watch."
                         android:textSize="14sp"
+                        android:gravity="center"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:lineSpacingExtra="4dp"/>
+                        android:alpha="0.8"
+                        android:lineSpacingMultiplier="1.2"/>
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Developer Info Card -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- ACHIEVEMENTS TITLE -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="What We've Achieved"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- FEATURES GRID (2 Columns) -->
+            <GridLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="?attr/colorSurfaceVariant"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="1dp">
+                android:columnCount="2"
+                android:rowCount="3"
+                android:alignmentMode="alignMargins"
+                android:columnOrderPreserved="false">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <!-- Feature 1: Hybrid Player -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Developer"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnSurface"
-                        android:layout_marginBottom="16dp"/>
-
+                    android:layout_columnWeight="1"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:strokeColor="?attr/colorOutline"
+                    app:strokeWidth="1dp"
+                    app:cardElevation="0dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="12dp">
-
+                        android:orientation="vertical"
+                        android:padding="16dp">
                         <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:src="@drawable/ic_person"
-                            android:layout_marginEnd="12dp"
-                            app:tint="?attr/colorOnSurfaceVariant"
-                            android:contentDescription="Developer" />
-
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_music_note"
+                            app:tint="?attr/colorPrimary"/>
                         <TextView
-                            android:id="@+id/tv_developer_name"
-                            android:layout_width="0dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Shubham Gupta"
-                            android:textSize="14sp"
-                            android:textColor="?attr/colorOnSurface"/>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:src="@drawable/ic_email"
-                            android:layout_marginEnd="12dp"
-                            app:tint="?attr/colorOnSurfaceVariant"
-                            android:contentDescription="Email" />
-
-                        <TextView
-                            android:id="@+id/tv_developer_email"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="shubhamgupta15m@gmail.com"
-                            android:textSize="14sp"
-                            android:textColor="?attr/colorPrimary"
-                            android:autoLink="email"
-                            android:textStyle="normal"/>
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Contact Info Card -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="?attr/colorSurfaceVariant"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:src="@drawable/ic_support"
-                            android:layout_marginEnd="12dp"
-                            app:tint="?attr/colorOnSurface"
-                            android:contentDescription="Support" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Contact &amp; Support"
-                            android:textSize="16sp"
+                            android:text="Hybrid Core"
                             android:textStyle="bold"
+                            android:layout_marginTop="8dp"
                             android:textColor="?attr/colorOnSurface"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Seamless Audio &amp; Video playback"
+                            android:textSize="12sp"
+                            android:layout_marginTop="4dp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
                     </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                    <TextView
+                <!-- Feature 2: Equalizer -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:strokeColor="?attr/colorOutline"
+                    app:strokeWidth="1dp"
+                    app:cardElevation="0dp">
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="For support and feedback, please contact us via email."
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:lineSpacingExtra="4dp"
-                        android:layout_marginBottom="12dp"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_equalizer"
+                            app:tint="?attr/colorPrimary"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sound Engine"
+                            android:textStyle="bold"
+                            android:layout_marginTop="8dp"
+                            android:textColor="?attr/colorOnSurface"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="5-Band EQ with Bass Boost"
+                            android:textSize="12sp"
+                            android:layout_marginTop="4dp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                    <TextView
+                <!-- Feature 3: Themes -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:strokeColor="?attr/colorOutline"
+                    app:strokeWidth="1dp"
+                    app:cardElevation="0dp">
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="We appreciate your feedback and are constantly working to improve the app."
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:lineSpacingExtra="4dp"/>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_theme"
+                            app:tint="?attr/colorPrimary"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Adaptive UI"
+                            android:textStyle="bold"
+                            android:layout_marginTop="8dp"
+                            android:textColor="?attr/colorOnSurface"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Light, Dark &amp; System Themes"
+                            android:textSize="12sp"
+                            android:layout_marginTop="4dp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-            <!-- App Features Card -->
+                <!-- Feature 4: Library -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardBackgroundColor="?attr/colorSurface"
+                    app:strokeColor="?attr/colorOutline"
+                    app:strokeWidth="1dp"
+                    app:cardElevation="0dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_playlist"
+                            app:tint="?attr/colorPrimary"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Smart Lib"
+                            android:textStyle="bold"
+                            android:layout_marginTop="8dp"
+                            android:textColor="?attr/colorOnSurface"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Favorites, Recents &amp; Scanning"
+                            android:textSize="12sp"
+                            android:layout_marginTop="4dp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </GridLayout>
+
+
+            <!-- TECH STACK CHIPS -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Built With"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"/>
+
+            <com.google.android.material.chip.ChipGroup
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp">
+
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Kotlin"
+                    style="@style/Widget.Material3.Chip.Suggestion"/>
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Media3 Exoplayer"
+                    style="@style/Widget.Material3.Chip.Suggestion"/>
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Material Design 3"
+                    style="@style/Widget.Material3.Chip.Suggestion"/>
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Coroutines"
+                    style="@style/Widget.Material3.Chip.Suggestion"/>
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Android 11+"
+                    style="@style/Widget.Material3.Chip.Suggestion"/>
+            </com.google.android.material.chip.ChipGroup>
+
+            <!-- DEVELOPER ISLAND -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
                 app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="1dp">
+                app:cardBackgroundColor="?attr/colorSurface">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Features"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnPrimaryContainer"
-                        android:layout_marginBottom="12dp"/>
+                    android:orientation="vertical">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="8dp">
+                        android:padding="16dp"
+                        android:background="?attr/colorSurfaceVariant">
 
                         <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:src="@drawable/ic_select_on"
-                            android:layout_marginEnd="12dp"
-                            app:tint="?attr/colorOnPrimaryContainer"
-                            android:contentDescription="Feature" />
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:src="@drawable/ic_person"
+                            app:tint="?attr/colorOnSurfaceVariant"/>
 
-                        <TextView
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Modern Material Design 3 UI"
-                            android:textSize="14sp"
-                            android:textColor="?attr/colorOnPrimaryContainer"/>
+                            android:orientation="vertical"
+                            android:layout_marginStart="16dp">
+
+                            <TextView
+                                android:id="@+id/tv_developer_name"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Shubham Gupta"
+                                android:textStyle="bold"
+                                android:textSize="16sp"
+                                android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Lead Developer"
+                                android:textSize="12sp"
+                                android:textColor="?attr/colorOnSurfaceVariant"/>
+                        </LinearLayout>
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="8dp">
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:src="@drawable/ic_select_on"
-                            android:layout_marginEnd="12dp"
-                            app:tint="?attr/colorOnPrimaryContainer"
-                            android:contentDescription="Feature" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:src="@drawable/ic_email"
+                                app:tint="?attr/colorPrimary"/>
+                            <TextView
+                                android:id="@+id/tv_developer_email"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="email@example.com"
+                                android:layout_marginStart="12dp"
+                                android:textColor="?attr/colorOnSurface"/>
+                        </LinearLayout>
 
                         <TextView
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Built-in Equalizer &amp; Sound Effects"
-                            android:textSize="14sp"
-                            android:textColor="?attr/colorOnPrimaryContainer"/>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:src="@drawable/ic_select_on"
-                            android:layout_marginEnd="12dp"
-                            app:tint="?attr/colorOnPrimaryContainer"
-                            android:contentDescription="Feature" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Background Playback &amp; Notifications"
-                            android:textSize="14sp"
-                            android:textColor="?attr/colorOnPrimaryContainer"/>
+                            android:text="Thank you for using Nebula Player. Your feedback helps us grow."
+                            android:textSize="12sp"
+                            android:textColor="?attr/colorOutline"
+                            android:layout_marginTop="4dp"/>
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="© 2025 Nebula Inc."
+                android:gravity="center"
+                android:layout_marginTop="32dp"
+                android:textColor="?attr/colorOutline"
+                android:textSize="12sp"/>
 
         </LinearLayout>
-    </ScrollView>
-
+    </androidx.core.widget.NestedScrollView>
 </LinearLayout>
