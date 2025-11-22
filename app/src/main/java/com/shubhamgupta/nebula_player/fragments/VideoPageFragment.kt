@@ -44,20 +44,19 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.regex.Pattern
 
-class VideosFragment : Fragment() {
+class VideoPageFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyView: TextView
     private lateinit var loadingProgress: ProgressBar
-    private var pageTitle: TextView? = null
-    private var btnSort: ImageButton? = null
+    private lateinit var pageTitle: TextView
 
     private val videoList = mutableListOf<Video>()
-    private val currentUiList = mutableListOf<VideoUiModel>()
+    private val currentUiList = mutableListOf<VideoUiModel>() // Can be Videos or Folders
 
-    // Sort and Grouping State
     private var currentSortType = MainActivity.SortType.DATE_ADDED_DESC
-    private var isFolderSort = true // Means "Grouping Enabled"
+    private var isFolderSort = false
+    private var isFolderSortAsc = true
 
     // Folder Navigation State
     private var isInFolderView = false
@@ -82,6 +81,7 @@ class VideosFragment : Fragment() {
     private val searchReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "SEARCH_QUERY_CHANGED") {
+                // Search resets folder view to show all matching videos flat
                 val query = intent.getStringExtra("query") ?: ""
                 filterVideos(query)
             }
@@ -93,14 +93,13 @@ class VideosFragment : Fragment() {
             if (intent?.action == "SORT_VIDEOS") {
                 val sortTypeOrdinal = intent.getIntExtra("sort_type", 0)
                 val newSortType = MainActivity.SortType.entries.toTypedArray()[sortTypeOrdinal]
-
-                currentSortType = newSortType
-                // If global sort is triggered, we usually disable grouping/folders to show the sorted list
-                // OR we can keep grouping but sort the groups.
-                // Standard behavior: Sort disables folder navigation if deep inside, but keeps grouping preference if set.
-                isInFolderView = false
-                PreferenceManager.saveSortPreference(requireContext(), "videos", currentSortType)
-                loadVideos()
+                if (newSortType != currentSortType) {
+                    currentSortType = newSortType
+                    isFolderSort = false
+                    isInFolderView = false // Reset folder view on global sort
+                    PreferenceManager.saveSortPreference(requireContext(), "videos", currentSortType)
+                    loadVideos()
+                }
             }
         }
     }
@@ -114,11 +113,9 @@ class VideosFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Load saved preferences
         currentSortType = PreferenceManager.getSortPreferenceWithDefault(requireContext(), "videos")
-        isFolderSort = PreferenceManager.isVideoGroupingEnabled(requireContext())
 
+        // Initialize Delete Launcher
         deleteResultLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 Toast.makeText(requireContext(), "Video deleted", Toast.LENGTH_SHORT).show()
@@ -138,7 +135,6 @@ class VideosFragment : Fragment() {
         emptyView = view.findViewById(R.id.tv_empty_videos)
         loadingProgress = view.findViewById(R.id.loading_progress)
         pageTitle = view.findViewById(R.id.page_title)
-        btnSort = view.findViewById(R.id.btn_sort)
 
         recyclerView.layoutManager = GridLayoutManager(context, 2)
         videoContentObserver = VideoContentObserver(handler)
@@ -148,17 +144,13 @@ class VideosFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        initializeViews()
+        initializeViews(view)
         loadVideos()
     }
 
-    private fun initializeViews() {
-        btnSort?.setOnClickListener {
-            if (isInFolderView) {
-                handleBackPress()
-            } else {
-                showSortDialog()
-            }
+    private fun initializeViews(view: View) {
+        view.findViewById<ImageButton>(R.id.btn_sort).setOnClickListener {
+            showSortDialog()
         }
     }
 
@@ -182,7 +174,7 @@ class VideosFragment : Fragment() {
                 videoContentObserver
             )
         } catch (e: Exception) {
-            Log.e("VideosFragment", "Error registering content observer", e)
+            Log.e("VideoPageFragment", "Error registering content observer", e)
         }
 
         handler.post(refreshRunnable)
@@ -196,44 +188,6 @@ class VideosFragment : Fragment() {
 
         loadJob?.cancel()
         handler.removeCallbacks(refreshRunnable)
-        saveScrollState()
-    }
-
-    fun setScrollingEnabled(enabled: Boolean) {
-        if (this::recyclerView.isInitialized) {
-            recyclerView.isNestedScrollingEnabled = enabled
-            recyclerView.isEnabled = enabled
-        }
-    }
-
-    fun saveScrollState() {
-        if (this::recyclerView.isInitialized) {
-            val layoutManager = recyclerView.layoutManager as? GridLayoutManager
-            layoutManager?.let {
-                scrollPosition = it.findFirstVisibleItemPosition()
-                val v = it.findViewByPosition(scrollPosition)
-                scrollOffset = v?.top ?: 0
-            }
-        }
-    }
-
-    fun restoreScrollState() {
-        if (this::recyclerView.isInitialized) {
-            val layoutManager = recyclerView.layoutManager as? GridLayoutManager
-            layoutManager?.let {
-                handler.postDelayed({
-                    it.scrollToPositionWithOffset(scrollPosition, scrollOffset)
-                }, 100)
-            }
-        }
-    }
-
-    fun refreshData() {
-        if (isAdded) loadVideos()
-    }
-
-    fun refreshDataPreserveState() {
-        if (isAdded) loadVideos(preserveState = true)
     }
 
     private fun loadVideos(preserveState: Boolean = false) {
@@ -255,190 +209,97 @@ class VideosFragment : Fragment() {
                 if (!preserveState) {
                     loadingProgress.visibility = View.GONE
                     recyclerView.visibility = View.VISIBLE
-                } else {
-                    restoreScrollState()
                 }
             } catch (e: Exception) {
-                Log.e("VideosFragment", "Error loading videos", e)
+                Log.e("VideoPageFragment", "Error loading videos", e)
                 loadingProgress.visibility = View.GONE
             }
         }
     }
 
+    // Logic to switch between Showing Folders vs Showing Videos
     private fun generateUiList() {
         currentUiList.clear()
 
         if (isInFolderView && activeFolderName != null) {
-            // --- INSIDE A GROUP/FOLDER ---
-            pageTitle?.text = activeFolderName
-            btnSort?.setImageResource(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
-
-            // Show only videos belonging to this group
+            // 1. Show Videos inside a specific Folder
+            pageTitle.text = activeFolderName
             val folderVideos = videoList.filter { getSmartGroupKey(it) == activeFolderName }
 
-            // Sort items within the folder based on current sort
-            val sortedVideos = sortVideosList(folderVideos)
+            // Sort videos inside folder
+            val sortedVideos = if (currentSortType == MainActivity.SortType.NAME_ASC) {
+                folderVideos.sortedBy { it.title.lowercase() }
+            } else {
+                folderVideos.sortedByDescending { it.dateAdded }
+            }
+
             currentUiList.addAll(sortedVideos.map { VideoUiModel.VideoItem(it) })
 
         } else if (isFolderSort) {
-            // --- MAIN VIEW: GROUPED (FOLDERS + VIDEOS) ---
-            pageTitle?.text = "Videos"
-            btnSort?.setImageResource(R.drawable.ic_sort)
-
-            // 1. Group all videos by key
+            // 2. Show List of Folders
+            pageTitle.text = "Folders"
             val grouped = videoList.groupBy { getSmartGroupKey(it) }
 
-            val mixedList = mutableListOf<VideoUiModel>()
-
-            grouped.forEach { (groupName, videos) ->
-                if (videos.size > 1) {
-                    // It's a group/folder
-                    // We need a representative video for sorting (e.g. the newest one if sorting by date)
-                    val sortedGroup = sortVideosList(videos)
-                    val representative = sortedGroup.firstOrNull()
-                    mixedList.add(VideoUiModel.FolderItem(groupName, videos.size, representative))
-                } else {
-                    // It's a single video
-                    mixedList.add(VideoUiModel.VideoItem(videos[0]))
-                }
+            val folders = grouped.map { (name, videos) ->
+                VideoUiModel.FolderItem(name, videos.size, videos.firstOrNull())
             }
 
-            // 2. Sort the mixed list (Folders and Videos together)
-            sortMixedList(mixedList)
-            currentUiList.addAll(mixedList)
+            // Sort folders
+            val sortedFolders = if (isFolderSortAsc) {
+                folders.sortedBy { it.name.lowercase() }
+            } else {
+                folders.sortedByDescending { it.name.lowercase() }
+            }
+
+            currentUiList.addAll(sortedFolders)
 
         } else {
-            // --- MAIN VIEW: FLAT LIST (NO GROUPING) ---
-            pageTitle?.text = "All Videos"
-            btnSort?.setImageResource(R.drawable.ic_sort)
-
-            val sortedVideos = sortVideosList(videoList)
-            currentUiList.addAll(sortedVideos.map { VideoUiModel.VideoItem(it) })
+            // 3. Show All Videos Flat
+            pageTitle.text = "Videos"
+            applyStandardSort() // Sorts videoList
+            currentUiList.addAll(videoList.map { VideoUiModel.VideoItem(it) })
         }
 
         updateAdapter()
     }
 
-    /**
-     * Helper to sort a list of Video objects based on current preference
-     */
-    private fun sortVideosList(videos: List<Video>): List<Video> {
-        return when (currentSortType) {
-            MainActivity.SortType.NAME_ASC -> videos.sortedBy { it.title.lowercase() }
-            MainActivity.SortType.NAME_DESC -> videos.sortedByDescending { it.title.lowercase() }
-            MainActivity.SortType.DATE_ADDED_ASC -> videos.sortedBy { it.dateAdded }
-            MainActivity.SortType.DATE_ADDED_DESC -> videos.sortedByDescending { it.dateAdded }
-            MainActivity.SortType.DURATION -> videos.sortedByDescending { it.duration }
+    private fun applyStandardSort() {
+        when (currentSortType) {
+            MainActivity.SortType.NAME_ASC -> videoList.sortBy { it.title.lowercase() }
+            MainActivity.SortType.NAME_DESC -> videoList.sortByDescending { it.title.lowercase() }
+            MainActivity.SortType.DATE_ADDED_ASC -> videoList.sortBy { it.dateAdded }
+            MainActivity.SortType.DATE_ADDED_DESC -> videoList.sortByDescending { it.dateAdded }
+            MainActivity.SortType.DURATION -> videoList.sortByDescending { it.duration }
         }
     }
 
-    /**
-     * Helper to sort the Mixed UI List (Folders + Videos)
-     */
-    private fun sortMixedList(list: MutableList<VideoUiModel>) {
-        val comparator = Comparator<VideoUiModel> { a, b ->
-            when (currentSortType) {
-                MainActivity.SortType.NAME_ASC -> {
-                    getItemTitle(a).compareTo(getItemTitle(b), ignoreCase = true)
-                }
-                MainActivity.SortType.NAME_DESC -> {
-                    getItemTitle(b).compareTo(getItemTitle(a), ignoreCase = true)
-                }
-                MainActivity.SortType.DATE_ADDED_DESC -> {
-                    // Newest first
-                    val dateA = getItemDate(a)
-                    val dateB = getItemDate(b)
-                    dateB.compareTo(dateA)
-                }
-                MainActivity.SortType.DATE_ADDED_ASC -> {
-                    // Oldest first
-                    val dateA = getItemDate(a)
-                    val dateB = getItemDate(b)
-                    dateA.compareTo(dateB)
-                }
-                MainActivity.SortType.DURATION -> {
-                    // Longest first
-                    val durA = getItemDuration(a)
-                    val durB = getItemDuration(b)
-                    durB.compareTo(durA)
-                }
-            }
-        }
-        list.sortWith(comparator)
-    }
-
-    private fun getItemTitle(item: VideoUiModel): String {
-        return when (item) {
-            is VideoUiModel.VideoItem -> item.video.title
-            is VideoUiModel.FolderItem -> item.name
-        }
-    }
-
-    private fun getItemDate(item: VideoUiModel): Long {
-        return when (item) {
-            is VideoUiModel.VideoItem -> item.video.dateAdded
-            // For a folder, use the date of the representative video (usually the newest/first)
-            is VideoUiModel.FolderItem -> item.firstVideo?.dateAdded ?: 0L
-        }
-    }
-
-    private fun getItemDuration(item: VideoUiModel): Long {
-        return when (item) {
-            is VideoUiModel.VideoItem -> item.video.duration
-            is VideoUiModel.FolderItem -> item.firstVideo?.duration ?: 0L
-        }
-    }
-
-    /**
-     * Generates a Group Name based on the filename string.
-     * Implements "Smart Grouping" to cluster videos with similar names.
-     * UPDATED: Relaxed logic to group any files with same starting characters.
-     */
     private fun getSmartGroupKey(video: Video): String {
         val title = video.title.trim()
-
-        // 1. WhatsApp Videos
         if (title.startsWith("VID-WA", ignoreCase = true) || title.startsWith("WhatsApp Video", ignoreCase = true)) {
             return "WhatsApp Videos"
         }
-
-        // 2. Camera Recordings
-        if (title.startsWith("VID_", ignoreCase = true) || title.startsWith("PXL_", ignoreCase = true)) {
-            return "Camera"
+        val seriesPattern = Pattern.compile("^(.*?)[\\s\\.\\-_]+S\\d+", Pattern.CASE_INSENSITIVE)
+        val matcher = seriesPattern.matcher(title)
+        if (matcher.find()) {
+            val seriesName = matcher.group(1)?.trim()
+            if (!seriesName.isNullOrEmpty()) return seriesName
         }
-
-        // 3. General "Strip Suffix" Logic
-        // Replaces any sequence of digits, separators, or braces at the END of the string.
-        // Examples:
-        // "Trip to Goa 1" -> "Trip to Goa"
-        // "Trip to Goa_02" -> "Trip to Goa"
-        // "MyVideo - 01" -> "MyVideo"
-        // "Movie (2024)" -> "Movie"
-
-        val suffixRegex = Regex("[\\s_\\-\\.\\(\\)\\[\\]]+\\d+$")
-        var cleanTitle = title.replace(suffixRegex, "").trim()
-
-        // Remove trailing non-alphanumeric chars if any left
-        cleanTitle = cleanTitle.trim { !it.isLetterOrDigit() }
-
-        // If aggressive stripping left it too short, revert to original (prevents grouping different "1.mp4", "2.mp4")
-        if (cleanTitle.length >= 2) {
-            return cleanTitle
+        return try {
+            File(video.path).parentFile?.name ?: "Unknown Folder"
+        } catch (e: Exception) {
+            "Unknown Folder"
         }
-
-        return title
     }
 
     private fun filterVideos(query: String) {
+        // Search always searches everything and shows flat list
         if (query.isNotBlank()) {
             currentUiList.clear()
             val filtered = videoList.filter { it.title.contains(query, true) }
             currentUiList.addAll(filtered.map { VideoUiModel.VideoItem(it) })
-            pageTitle?.text = "Search Results"
-            btnSort?.setImageResource(androidx.appcompat.R.drawable.abc_ic_clear_material)
             updateAdapter()
         } else {
-            generateUiList()
+            generateUiList() // Restore original view
         }
     }
 
@@ -452,6 +313,7 @@ class VideosFragment : Fragment() {
             onItemClick = { item ->
                 when (item) {
                     is VideoUiModel.VideoItem -> {
+                        // Play Video
                         val intent = Intent(requireContext(), VideoPlayerActivity::class.java).apply {
                             putExtra("VIDEO_ID", item.video.id)
                             putExtra("VIDEO_TITLE", item.video.title)
@@ -459,23 +321,17 @@ class VideosFragment : Fragment() {
                         startActivity(intent)
                     }
                     is VideoUiModel.FolderItem -> {
+                        // Enter Folder
                         enterFolder(item.name)
                     }
                 }
             },
-            onDeleteRequest = { video ->
-                requestDeleteVideo(video)
-            }
+            onDeleteRequest = { video -> requestDeleteVideo(video) }
         )
         recyclerView.adapter = adapter
 
-        if (currentUiList.isEmpty()) {
-            emptyView.visibility = View.VISIBLE
-            recyclerView.visibility = View.GONE
-        } else {
-            emptyView.visibility = View.GONE
-            recyclerView.visibility = View.VISIBLE
-        }
+        emptyView.visibility = if (currentUiList.isEmpty()) View.VISIBLE else View.GONE
+        recyclerView.visibility = if (currentUiList.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun enterFolder(folderName: String) {
@@ -484,11 +340,12 @@ class VideosFragment : Fragment() {
         generateUiList()
     }
 
+    // Public method for HomePageFragment to call
     fun handleBackPress(): Boolean {
         if (isInFolderView) {
             isInFolderView = false
             activeFolderName = null
-            generateUiList()
+            generateUiList() // Go back to folder list
             return true
         }
         return false
@@ -507,6 +364,7 @@ class VideosFragment : Fragment() {
                 val request = IntentSenderRequest.Builder(intentSender).build()
                 deleteResultLauncher.launch(request)
             } else {
+                // Pre-R deletion
                 requireContext().contentResolver.delete(video.uri, null, null)
                 loadVideos()
             }
@@ -521,7 +379,7 @@ class VideosFragment : Fragment() {
     }
 
     private fun showSortDialog() {
-        val sortOptions = listOf(
+        val sortOptions = mutableListOf(
             "Name (A-Z)" to MainActivity.SortType.NAME_ASC,
             "Name (Z-A)" to MainActivity.SortType.NAME_DESC,
             "Date Added (Newest)" to MainActivity.SortType.DATE_ADDED_DESC,
@@ -529,27 +387,24 @@ class VideosFragment : Fragment() {
             "Duration" to MainActivity.SortType.DURATION
         )
 
-        // Add "Grouping" toggle option at the end
-        val optionsTitles = sortOptions.map { it.first }.toMutableList()
-        val groupingStatusText = if (isFolderSort) "Disable Grouping" else "Enable Grouping"
-        optionsTitles.add(groupingStatusText)
+        val optionsList = sortOptions.map { it.first }.toMutableList()
+        optionsList.add("Folder (A-Z)")
+        optionsList.add("Folder (Z-A)")
 
-        val items = optionsTitles.toTypedArray()
+        val items = optionsList.toTypedArray()
 
         AlertDialog.Builder(requireContext())
             .setTitle("Sort videos by")
             .setItems(items) { _, which ->
                 if (which < sortOptions.size) {
-                    // Sorting Option Selected
+                    isFolderSort = false
                     val selectedSort = sortOptions[which].second
                     currentSortType = selectedSort
                     PreferenceManager.saveSortPreference(requireContext(), "videos", selectedSort)
                 } else {
-                    // Grouping Toggle Selected
-                    isFolderSort = !isFolderSort
-                    // Reset folder view if disabling grouping
-                    if (!isFolderSort) isInFolderView = false
-                    PreferenceManager.setVideoGroupingEnabled(requireContext(), isFolderSort)
+                    isFolderSort = true
+                    isInFolderView = false // Reset navigation
+                    isFolderSortAsc = (items[which] == "Folder (A-Z)")
                 }
 
                 loadVideos()
@@ -557,4 +412,8 @@ class VideosFragment : Fragment() {
             }
             .show()
     }
+
+    // Helpers for state preservation
+    fun refreshData() { if (isAdded) loadVideos() }
+    fun refreshDataPreserveState() { if (isAdded) loadVideos(preserveState = true) }
 }

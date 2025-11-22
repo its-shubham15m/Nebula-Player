@@ -8,11 +8,12 @@
     android:padding="8dp"
     android:background="?attr/selectableItemBackground">
 
+    <!-- Reduced height further to 145dp for smaller appearance -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="145dp"
         app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
+        app:cardElevation="3dp"
         app:cardBackgroundColor="#202020">
 
         <FrameLayout
@@ -31,26 +32,28 @@
                 android:layout_height="match_parent"
                 android:background="#33000000"/>
 
+            <!-- Play icon overlay, ID added for programmatic access -->
             <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:id="@+id/icon_play_overlay"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:src="@drawable/ic_play"
                 android:layout_gravity="center"
                 app:tint="#FFFFFF"
-                android:padding="12dp"/>
+                android:padding="10dp"/>
 
             <TextView
                 android:id="@+id/video_duration"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end"
-                android:layout_margin="8dp"
+                android:layout_margin="6dp"
                 android:background="@drawable/rounded_background_black_transparent"
                 android:paddingHorizontal="6dp"
                 android:paddingVertical="2dp"
                 tools:text="10:25"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="10sp"
                 android:textStyle="bold"/>
 
             <TextView
@@ -58,11 +61,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|start"
-                android:layout_margin="8dp"
+                android:layout_margin="6dp"
                 android:background="@drawable/rounded_background_black_transparent"
                 android:paddingHorizontal="6dp"
                 android:paddingVertical="2dp"
-                tools:text="1920x1080"
+                tools:text="1080p"
                 android:textColor="#FFFFFF"
                 android:textSize="10sp"/>
 
@@ -73,25 +76,32 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp">
 
         <TextView
             android:id="@+id/video_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            tools:text="Sample Video Title Here"
+            tools:text="Video Title"
             android:textColor="?attr/colorOnSurface"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:maxLines="2"
             android:ellipsize="end"/>
 
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+        <!-- Options Button -->
+        <ImageButton
+            android:id="@+id/btn_options"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:src="@drawable/ic_options"
             app:tint="?attr/colorOnSurfaceVariant"
-            android:padding="2dp"/>
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="6dp"
+            android:contentDescription="Options"/>
     </LinearLayout>
 
 </LinearLayout>

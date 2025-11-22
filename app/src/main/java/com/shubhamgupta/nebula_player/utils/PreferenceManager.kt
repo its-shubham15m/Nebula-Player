@@ -35,6 +35,7 @@ object PreferenceManager {
     private const val KEY_SORT_ALBUMS = "sort_albums"
     private const val KEY_SORT_GENRES = "sort_genres"
     private const val KEY_SORT_VIDEOS = "sort_videos"
+    private const val KEY_VIDEO_GROUPING_ENABLED = "video_grouping_enabled"
 
     // Professional Audio Settings
     private const val KEY_CROSSFADE_ENABLED = "crossfade_enabled"
@@ -71,11 +72,6 @@ object PreferenceManager {
     private fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
-
-    // ... (Keep existing Audio/Sort/Favorite/Playlist methods as they were) ...
-    // [OMITTED FOR BREVITY - COPY PASTE EXISTING METHODS HERE]
-    // Start copying from: isCrossfadeEnabled down to getSongsForQueue
-    // Below are the NEW methods for the Video Player
 
     // --- Audio Settings ---
     fun isCrossfadeEnabled(context: Context): Boolean = getPreferences(context).getBoolean(KEY_CROSSFADE_ENABLED, false)
@@ -129,6 +125,12 @@ object PreferenceManager {
             MainActivity.SortType.entries.toTypedArray()[defaultSort]
         }
     }
+
+    // --- Video Grouping Preference ---
+    // Default is TRUE (Grouping Enabled)
+    fun isVideoGroupingEnabled(context: Context): Boolean = getPreferences(context).getBoolean(KEY_VIDEO_GROUPING_ENABLED, true)
+    fun setVideoGroupingEnabled(context: Context, enabled: Boolean) = getPreferences(context).edit().putBoolean(KEY_VIDEO_GROUPING_ENABLED, enabled).apply()
+
 
     // --- Favorites ---
     fun addFavorite(context: Context, songId: Long) {
