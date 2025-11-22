@@ -19,14 +19,22 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.palette.graphics.Palette
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.LinearSmoothScroller
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
@@ -36,17 +44,22 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.shubhamgupta.nebula_player.MainActivity
 import com.shubhamgupta.nebula_player.R
+import com.shubhamgupta.nebula_player.api.LrcLibApiClient
 import com.shubhamgupta.nebula_player.models.Song
 import com.shubhamgupta.nebula_player.service.MusicService
 import com.shubhamgupta.nebula_player.utils.SongUtils
 import com.shubhamgupta.nebula_player.utils.Utils
 import com.shubhamgupta.nebula_player.utils.PreferenceManager
-import androidx.core.graphics.createBitmap
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import android.graphics.drawable.GradientDrawable
 import android.media.MediaMetadataRetriever
-
+import androidx.core.graphics.createBitmap
+import com.shubhamgupta.nebula_player.adapters.LyricLine
+import com.shubhamgupta.nebula_player.adapters.LyricsAdapter
+import com.shubhamgupta.nebula_player.models.LrcLibLyrics
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 class NowPlayingFragment : Fragment() {
 
@@ -80,7 +93,31 @@ class NowPlayingFragment : Fragment() {
     private lateinit var artistScrollView: HorizontalScrollView
     private lateinit var detailsScrollView: HorizontalScrollView
 
+    // Lyrics UI Components
+    private lateinit var lyricsOverlay: View
+    private lateinit var lyricsLoadingProgress: ProgressBar
+    private lateinit var lyricsRecyclerView: RecyclerView
+    private lateinit var lyricsPlainScrollView: View
+    private lateinit var tvLyricsPlain: TextView
+
+    private lateinit var lyricsAdapter: LyricsAdapter
+    private var currentLyricsList: List<LyricLine> = emptyList()
+    private var currentLyricsSongId: Long = -1
+    private var isLyricsVisible = false
+
     private lateinit var queueManager: NowPlayingQueueManager
+
+    // Smooth scroller to center items
+    private val smoothScroller by lazy {
+        object : LinearSmoothScroller(context) {
+            override fun getVerticalSnapPreference(): Int {
+                return SNAP_TO_START
+            }
+            override fun calculateDtToFit(viewStart: Int, viewEnd: Int, boxStart: Int, boxEnd: Int, snapPreference: Int): Int {
+                return (boxStart + (boxEnd - boxStart) / 2) - (viewStart + (viewEnd - viewStart) / 2)
+            }
+        }
+    }
 
     private val updateSeekBar = object : Runnable {
         override fun run() {
@@ -92,9 +129,29 @@ class NowPlayingFragment : Fragment() {
                     if (duration > 0) {
                         seekBar.progress = currentPosition
                         tvCurrent.text = Utils.formatTime(currentPosition.toLong())
+
+                        // Sync Lyrics
+                        syncLyrics(currentPosition.toLong())
                     }
                 }
-                handler.postDelayed(this, 1000)
+                handler.postDelayed(this, 250)
+            }
+        }
+    }
+
+    private fun syncLyrics(currentPosition: Long) {
+        if (!isLyricsVisible || currentLyricsList.isEmpty()) return
+
+        // Find the line that is currently playing
+        val activeIndex = currentLyricsList.indexOfLast { it.startTime <= currentPosition }
+
+        if (activeIndex != -1 && activeIndex != lyricsAdapter.activeIndex) {
+            lyricsAdapter.updateActiveLine(activeIndex)
+
+            val layoutManager = lyricsRecyclerView.layoutManager as? LinearLayoutManager
+            if (layoutManager != null) {
+                smoothScroller.targetPosition = activeIndex
+                layoutManager.startSmoothScroll(smoothScroller)
             }
         }
     }
@@ -109,6 +166,11 @@ class NowPlayingFragment : Fragment() {
                 "SONG_CHANGED" -> {
                     musicService?.getCurrentSong()?.let { song ->
                         song.isFavorite = PreferenceManager.isFavorite(requireContext(), song.id)
+                        if (isLyricsVisible) {
+                            fetchLyrics(song)
+                        } else {
+                            currentLyricsSongId = -1
+                        }
                     }
                     updateSongInfo()
                     updatePlaybackControls()
@@ -125,6 +187,7 @@ class NowPlayingFragment : Fragment() {
                     if (!isSeeking) {
                         seekBar.progress = position
                         tvCurrent.text = Utils.formatTime(position.toLong())
+                        syncLyrics(position.toLong())
                     }
                 }
                 "QUEUE_CHANGED" -> {
@@ -198,8 +261,25 @@ class NowPlayingFragment : Fragment() {
         artistScrollView = view.findViewById(R.id.artist_scroll_view)
         detailsScrollView = view.findViewById(R.id.details_scroll_view)
 
+        // Initialize Lyrics Views
+        lyricsOverlay = view.findViewById(R.id.lyrics_overlay)
+        lyricsLoadingProgress = view.findViewById(R.id.lyrics_loading_progress)
+        lyricsRecyclerView = view.findViewById(R.id.lyrics_recycler_view)
+        lyricsPlainScrollView = view.findViewById(R.id.lyrics_scroll_view)
+        tvLyricsPlain = view.findViewById(R.id.tv_lyrics_plain)
+
+        setupLyricsAdapter()
         setupSeekBar()
         applySystemWindowInsets(view)
+    }
+
+    private fun setupLyricsAdapter() {
+        // On lyric click, seek to that timestamp
+        lyricsAdapter = LyricsAdapter { line ->
+            musicService?.seekTo(line.startTime.toInt())
+        }
+        lyricsRecyclerView.layoutManager = LinearLayoutManager(context)
+        lyricsRecyclerView.adapter = lyricsAdapter
     }
 
     private fun applySystemWindowInsets(view: View) {
@@ -227,7 +307,6 @@ class NowPlayingFragment : Fragment() {
             insets
         }
     }
-
 
     private fun setupBottomSheet() {
         val bottomSheetView = LayoutInflater.from(requireContext())
@@ -285,6 +364,138 @@ class NowPlayingFragment : Fragment() {
         btnDetails.setOnClickListener { showSongDetailsSheet() }
         btnQueue.setOnClickListener { queueManager.showQueueDialog() }
         ivFavorite.setOnClickListener { toggleFavorite() }
+
+        // --- Lyrics Toggles ---
+        ivAlbumArt.setOnClickListener { toggleLyricsVisibility() }
+
+        // Close lyrics on tapping empty space
+        lyricsOverlay.setOnClickListener { toggleLyricsVisibility() }
+        lyricsPlainScrollView.setOnClickListener { toggleLyricsVisibility() }
+        tvLyricsPlain.setOnClickListener { toggleLyricsVisibility() }
+    }
+
+    private fun toggleLyricsVisibility() {
+        isLyricsVisible = !isLyricsVisible
+        if (isLyricsVisible) {
+            // Show with Fade In
+            lyricsOverlay.alpha = 0f
+            lyricsOverlay.visibility = View.VISIBLE
+            lyricsOverlay.animate().alpha(1f).setDuration(300).start()
+
+            val song = musicService?.getCurrentSong()
+            if (song != null) {
+                fetchLyrics(song)
+            }
+        } else {
+            // Hide with Fade Out
+            lyricsOverlay.animate().alpha(0f).setDuration(300).withEndAction {
+                lyricsOverlay.visibility = View.GONE
+            }.start()
+        }
+    }
+
+    /**
+     * Helper function to clean Metadata before sending to API
+     * Removes:
+     * - Content in brackets () [] {}
+     * - File extensions
+     * - Common spam domains/suffixes (e.g. - Pagalworld, www...)
+     */
+    private fun cleanMetaData(text: String?): String {
+        if (text.isNullOrEmpty()) return ""
+
+        var cleaned = text
+
+        // 1. Remove file extensions
+        cleaned = cleaned.replace(Regex("(?i)\\.(mp3|m4a|flac|wav|aac|ogg)$"), "")
+
+        // 2. Remove content in brackets/parentheses
+        cleaned = cleaned.replace(Regex("\\(.*?\\)"), "")
+        cleaned = cleaned.replace(Regex("\\[.*?\\]"), "")
+        cleaned = cleaned.replace(Regex("\\{.*?\\}"), "")
+
+        // 3. Remove specific website/spam patterns
+        // Pattern: " - WebsiteName", " @ Website", "www.Website.com"
+        // Aggressive strip of known domains/keywords often found in pirated tags
+        cleaned = cleaned.replace(Regex("(?i)\\s*[-_]?\\s*(?:www\\.|pagal|hindi|mr[-]?jatt|dj|wap|songs\\.pk|\\d+kbps|org|net|com|mobi|info|ru).*"), "")
+
+        return cleaned.trim()
+    }
+
+    private fun fetchLyrics(song: Song) {
+        if (currentLyricsSongId == song.id && (currentLyricsList.isNotEmpty() || tvLyricsPlain.text.isNotEmpty())) {
+            return
+        }
+
+        currentLyricsSongId = song.id
+        currentLyricsList = emptyList()
+        lyricsAdapter.submitList(emptyList())
+        tvLyricsPlain.text = ""
+
+        lyricsLoadingProgress.visibility = View.VISIBLE
+        lyricsRecyclerView.visibility = View.GONE
+        lyricsPlainScrollView.visibility = View.GONE
+
+        lifecycleScope.launch {
+            try {
+                // --- APPLY CLEANING HERE ---
+                val cleanTitle = cleanMetaData(song.title)
+                val cleanArtist = cleanMetaData(song.artist ?: "")
+                val cleanAlbum = cleanMetaData(song.album ?: "")
+                val durationSeconds = (song.duration / 1000).toInt()
+
+                Log.d("Lyrics", "Fetching for: '$cleanTitle' by '$cleanArtist'")
+
+                val lyricResult = withContext(Dispatchers.IO) {
+                    var result: LrcLibLyrics? = null
+                    try {
+                        // 1. Try Strict Matching with cleaned data
+                        result = LrcLibApiClient.api.getLyrics(cleanTitle, cleanArtist, cleanAlbum, durationSeconds)
+                    } catch (e: Exception) {
+                        try {
+                            // 2. Fallback to Search
+                            val query = "$cleanTitle $cleanArtist"
+                            val searchResults = LrcLibApiClient.api.searchLyrics(query)
+                            result = searchResults.minByOrNull { abs((it.duration ?: 0) - durationSeconds) }
+                        } catch (searchEx: Exception) {
+                            Log.e("NowPlayingFragment", "Search failed: ${searchEx.message}")
+                        }
+                    }
+                    result
+                }
+
+                lyricsLoadingProgress.visibility = View.GONE
+
+                if (lyricResult != null) {
+                    if (!lyricResult.syncedLyrics.isNullOrEmpty()) {
+                        currentLyricsList = LyricsAdapter.parseLrc(lyricResult.syncedLyrics)
+                        lyricsAdapter.submitList(currentLyricsList)
+                        lyricsRecyclerView.visibility = View.VISIBLE
+                        lyricsPlainScrollView.visibility = View.GONE
+                    }
+                    else if (!lyricResult.plainLyrics.isNullOrEmpty()) {
+                        tvLyricsPlain.text = lyricResult.plainLyrics
+                        lyricsPlainScrollView.visibility = View.VISIBLE
+                        lyricsRecyclerView.visibility = View.GONE
+                    } else {
+                        showNoLyricsFound()
+                    }
+                } else {
+                    showNoLyricsFound()
+                }
+
+            } catch (e: Exception) {
+                Log.e("NowPlayingFragment", "Error fetching lyrics: ${e.message}")
+                lyricsLoadingProgress.visibility = View.GONE
+                showNoLyricsFound()
+            }
+        }
+    }
+
+    private fun showNoLyricsFound() {
+        tvLyricsPlain.text = "No lyrics found"
+        lyricsPlainScrollView.visibility = View.VISIBLE
+        lyricsRecyclerView.visibility = View.GONE
     }
 
     private fun toggleRepeat() {

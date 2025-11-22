@@ -17,7 +17,7 @@ android {
         minSdk = 30
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.2"
+        versionName = "0.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         getAndroidVersion()?.let { buildConfigField("boolean", "IS_ANDROID_14_OR_ABOVE", "${it >= 34}") }
@@ -121,4 +121,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("androidx.work:work-runtime-ktx:2.8.1")
     implementation("androidx.core:core:1.12.0")
+
+    // --- RETROFIT FOR LYRICS API ---
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 }

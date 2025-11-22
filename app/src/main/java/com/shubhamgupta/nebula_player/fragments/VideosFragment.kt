@@ -111,35 +111,7 @@ class VideosFragment : Fragment() {
         }
     }
 
-    companion object {
-        /**
-         * HELPER METHOD FOR ADAPTER
-         * Call this from your VideoAdapter.onBindViewHolder to fix resolution text.
-         * Example: holder.resolution.text = VideosFragment.formatResolution(video.resolution)
-         */
-        fun formatResolution(resolutionString: String?): String {
-            if (resolutionString.isNullOrEmpty()) return ""
-            try {
-                // Expected format "1920x1080" or similar
-                val parts = resolutionString.split("x", "X")
-                if (parts.size == 2) {
-                    val height = parts[1].trim().toIntOrNull() ?: return resolutionString
-                    return when {
-                        height >= 2160 -> "4K"
-                        height >= 1440 -> "1440p"
-                        height >= 1080 -> "1080p"
-                        height >= 720 -> "720p"
-                        height >= 480 -> "480p"
-                        height >= 360 -> "360p"
-                        else -> resolutionString
-                    }
-                }
-            } catch (e: Exception) {
-                return resolutionString
-            }
-            return resolutionString
-        }
-    }
+    // Note: formatResolution logic has been moved to VideoAdapter for better encapsulation.
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -266,7 +238,10 @@ class VideosFragment : Fragment() {
     }
 
     private fun loadVideos(preserveState: Boolean = false) {
-        if (!preserveState) {
+        // FIX: Capture the current scroll position BEFORE the update starts if we are preserving state.
+        if (preserveState) {
+            saveScrollState()
+        } else {
             loadingProgress.visibility = View.VISIBLE
             recyclerView.visibility = View.GONE
             emptyView.visibility = View.GONE

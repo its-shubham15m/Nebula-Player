@@ -96,6 +96,18 @@
         app:layout_constraintWidth_max="400dp"
         android:contentDescription="Album Art"/>
 
+    <!-- LYRICS OVERLAY (INCLUDED) -->
+    <!-- Constraint parameters are applied to the included layout root view -->
+    <include
+        android:id="@+id/lyrics_overlay"
+        layout="@layout/layout_lyrics_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="@id/album_art"
+        app:layout_constraintBottom_toBottomOf="@id/album_art"
+        app:layout_constraintStart_toStartOf="@id/album_art"
+        app:layout_constraintEnd_toEndOf="@id/album_art" />
+
     <HorizontalScrollView
         android:id="@+id/title_scroll_view"
         android:layout_width="0dp"
