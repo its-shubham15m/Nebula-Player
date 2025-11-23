@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
 
     <style name="Theme.NebulaPlayer" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/colorBackground</item>
@@ -92,4 +92,8 @@
         <item name="android:dropDownVerticalOffset">8dp</item>
         <item name="android:overlapAnchor">false</item>
     </style>
+
+    <!-- NavBar Color -->
+    <color name="bottom_nav_bg">#FDFDFD</color>
+    <color name="bottom_nav_divider">#1F000000</color>
 </resources>
